@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="src/js/jquery-3.3.1.js"></script>
+    <title>Welcome to Firebase Hosting</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/css/materialize.min.css">
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/js/materialize.min.js"></script>
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/5.2.0/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/5.2.0/firebase-auth.js"></script>
+    <script defer src="/__/firebase/5.2.0/firebase-database.js"></script>
+    <script defer src="/__/firebase/5.2.0/firebase-messaging.js"></script>
+    <script defer src="/__/firebase/5.2.0/firebase-storage.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+    <style media="screen">
+        body {
+            background: #ECEFF1;
+            color: rgba(0, 0, 0, 0.87);
+            font-family: Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #message {
+            background: white;
+            max-width: 360px;
+            margin: 100px auto 16px;
+            padding: 32px 24px;
+            border-radius: 3px;
+        }
+
+        #message h2 {
+            color: #ffa100;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 0 0 8px;
+        }
+
+        #message h1 {
+            font-size: 22px;
+            font-weight: 300;
+            color: rgba(0, 0, 0, 0.6);
+            margin: 0 0 16px;
+        }
+
+        #message p {
+            line-height: 140%;
+            margin: 16px 0 24px;
+            font-size: 14px;
+        }
+
+        #message a {
+            display: block;
+            text-align: center;
+            background: #039be5;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: white;
+            padding: 16px;
+            border-radius: 4px;
+        }
+
+        #message,
+        #message a {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        }
+
+        #load {
+            color: rgba(0, 0, 0, 0.4);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            body,
+            #message {
+                margin-top: 0;
+                background: white;
+                box-shadow: none;
+            }
+            body {
+                border-top: 16px solid #ffa100;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    username:
+    <input id="username" type="text" />
+    <div id="houses" class="row">
+        loading ...
+    </div>
+    <p id="load">Firebase SDK Loading&hellip;</p>
+    <script>
+        //init
+        if (typeof (String.prototype.trim) === "undefined") {
+            String.prototype.trim = function () {
+                return String(this).replace(/^\s+|\s+$/g, '');
+            };
+        }
+        //
+
+        console.log('4Head');
+        var proxy = 'https://cryptic-headland-94862.herokuapp.com/';
+        $(document).ready(function () { // init app
+            init = () => {
+                $.ajax({
+                    url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/getHouses',
+                    success: function (res) {
+                        var mainbox = $('#houses');
+                        mainbox.html('')
+                        for (var key in res) {
+                            house = res[key];
+                            var newbox = $('<div class="col s4 m3 l2"></div>');
+                            var card = $('<div class="card"></div>')
+                            cardContent = $('<div class="card-content"></div>')
+                            cardContent.append('<span class="card-title">' + house.name + '</b><br>');
+                            cardContent.append('<label>' + house.desc + '</label><br>');
+                            cardContent.append('<label>' + house.count + '/' + house.cap + 'students</label><br>');
+                            var joinButton = $('<button class="btn join-button" data-house="' + house.name + '"> join </button>')
+                            joinButton.click({ houseName: house.name }, addToHouse);
+                            mainbox.append(newbox);
+                            newbox.append(card);
+                            card.append(cardContent);
+                            cardContent.append(joinButton)
+                            
+                            // var addButton = $('<button class="btn add-button" data-house="' + house.name + '"> add new </button>')
+                            // addButton.click({ houseName: house.name }, newPersonToHouse);
+                            // cardContent.append(addButton)
+                        }
+                        return;
+                    },
+                    error: function (err) {
+                        console.log(err);
+                    }
+                })
+            }
+            init();
+        });
+
+        addToHouse = function (event) {
+            if ($('#username').val().trim() !== ""){
+                $.ajax({
+                    url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/addPersonToHouse',
+                    contentType: 'applcation/x-www-form-urlencoded',
+                    data: {
+                        id: $('#username').val().trim(),
+                        house: event.data.houseName
+                    },
+                    success: (res) => {alert(res); init();}
+                });
+            } else{
+                console.log('empty username');
+            }
+        }
+        newPersonToHouse = function (event) {
+            return;
+            // if ($('#username').val().trim() !== ""){
+            //     $.ajax({
+            //         url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/addPerson',
+            //         contentType: 'applcation/x-www-form-urlencoded',
+            //         data: {
+            //             id: $('#username').val().trim(),
+            //             house: event.data.houseName
+            //         },
+            //         success: (res) => {alert(res); init();}
+            //     });
+            // } else{
+            //     console.log('empty username');
+            // }
+        }
+    </script>
+    <script> // firebase
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                let app = firebase.app();
+                let features = ['auth', 'database', 'messaging', 'storage'].filter(feature => typeof app[feature] === 'function');
+                document.getElementById('load').innerHTML = `Firebase SDK loaded with ${features.join(', ')}`;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('load').innerHTML = 'Error loading the Firebase SDK, check the console.';
+            }
+        });
+    </script>
+</body>
+
+</html>
