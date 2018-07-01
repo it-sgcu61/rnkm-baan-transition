@@ -1,16 +1,9 @@
-var firebase = require("firebase");
+// var firebase = require("firebase");
 var functions = require('firebase-functions');
 var admin = require('firebase-admin'); // not needed anymore?
-// admin.initializeApp();
+admin.initializeApp();
 var bcrypt = require('bcrypt');
-var config = {
-    apiKey: "AIzaSyDtoVaA50nTikqo62rNzn6lAquMJlpjvCA",
-    authDomain: "rnkm2018-house-ad25ge.firebaseapp.com",
-    databaseURL: "https://rnkm2018-house-ad25ge.firebaseio.com",
-    storageBucket: "rnkm2018-house-ad25ge.appspot.com"
-};
-firebase.initializeApp(config);
-var db = firebase.database()
+var db = admin.database()
 
 
 exports.getHouses = functions.https.onRequest((req, res) => {
@@ -44,8 +37,8 @@ exports.addPersonToHouse = functions.https.onRequest((req, res) => {
         if (err)
             return res.send('err');
         else if (commited)
-            return db.ref('/person/' + id).once('value').then((snapshot) => {
-                var oldHouse = snapshot.val().house;
+            return db.ref('/person/' + id + '/house').once('value').then((snapshot) => {
+                var oldHouse = snapshot.val();
                 return db.ref('/houses/' + oldHouse + '/count').transaction((count) => count-1
                 ,() => {
                     return db.ref('/person/' + id + '/house').set(newHouse)
@@ -61,14 +54,72 @@ exports.addPersonToHouse = functions.https.onRequest((req, res) => {
 });
 
 
+
+
+
+// send cookie ?? (IDK about security OMEGALUL)
+exports.login = functions.https.onRequest((req, res) => {
+    var id = req.body.id.toString();
+    var tel = req.body.tel.toString();
+    var password = req.body.password.toString();
+    // return res.send(id + '--' +tel);
+    return db.ref('/secure/' + id).once('value').then((snapshot) => {
+        var user = snapshot.val();
+        if (user !== null && id === user.id && tel === user.tel){
+            // console.log('cmp', password,'and' ,user.password);
+            return bcrypt.compare(password, user.password, (err, same) => {
+                if (err){
+                    console.log('error logging in', err);
+                    return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Failed');
+                }
+                else if (same) {
+                    return bcrypt.hash(Date.now().toString(16), 10, (err, token) => {
+                        // send token
+                        if (err){
+                            console.log('token generation err', err);
+                            return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Failed');
+                        }
+                        else {
+                            var d = new Date();
+                            d.setTime(d.getTime() + 4*60*60*1000);
+                            return res.cookie('token', token, {maxAge: 600*1000, secure: true,  encode:String}).send('OK');
+                        }
+                    });
+                }
+                else{
+                    return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong pass'); //change later
+                }
+            });
+        } 
+        else {
+            return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong id/tel/'); //change later
+        }
+    });
+});
+
+// use when register ???
+exports.addPerson = functions.https.onRequest((req, res) => { 
+    var id=req.body.id.toString();
+    var password=req.body.password.toString();
+    var tel=req.body.tel.toString();
+    var house=req.body.house.toString();
+    return db.ref('/secure/' + id).set({id:id, password:password, tel:tel, house:house}).then((snapshot) => {
+        return db.ref('/houses/' + house + '/count/').transaction((count) => count+1).then(() =>{
+            return res.send('OK');
+        });
+    });
+});
+
+// only  runs when user added by /addPerson which is likely when new user register
 exports.initPerson = functions.database.ref('/secure/{userId}').onCreate((snapshot, context) => {
     // when import data from DTNL (house results + other infos ) create db in /person 
     // and hash Their password 
     // if password sent is already hashed I will remove hashing 
     var user = snapshot.val();
-    var id = user.idNumber;
-    var house = user.house; 
-    var password = user.password;
+    // incase of DB is int (please use string even for ID and tel)
+    var id = user.id.toString();
+    var house = user.house.toString(); 
+    var password = user.password.toString();
     return db.ref('/person/' + id).set({house: house}).then(() => {
         return bcrypt.hash(password, 8, (err, hash) => {
             if (err){
@@ -80,31 +131,4 @@ exports.initPerson = functions.database.ref('/secure/{userId}').onCreate((snapsh
             }
         });
     });
-});
-
-// send cookie ?? (IDK about security OMEGALUL)
-exports.login = functions.https.onRequest((req, res) => {
-    var id = req.body.id;
-    var tel = req.body.tel;
-    var password = req.body.password;
-    // return res.send(id + '--' +tel);
-    return db.ref('/secure/' + id).once('value').then((snapshot) => {
-        var user = snapshot.val();
-        if (id == user.id && tel == user.tel){
-            return bcrypt.compare(password, user.password, (err, same) => {
-                if (err){
-                    console.log('error logging in', err);
-                    return res.send('');
-                }
-                else{
-
-                }
-            });
-        } 
-        else {
-            return res.send('');
-        }
-    });
-   
-
 });
