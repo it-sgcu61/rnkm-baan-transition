@@ -13,8 +13,7 @@ exports.getHouses = functions.https.onRequest((req, res) => {
 });
 
 exports.addPersonToHouse = functions.https.onRequest((req, res) => {
-    // need some identification ? 
-    // id should be ID number(13 digit)?
+    // use username (telephone number) and token (from login) to authenticate
     try {
         var newHouse = req.query.house.trim();
         var username = req.query.username.trim();
@@ -110,9 +109,9 @@ exports.login = functions.https.onRequest((req, res) => {
     });
 });
 
-// use when register ???
 
 
+// use when register ??? need something to protect
 exports.addPerson = functions.https.onRequest((req, res) => { 
     var tel=req.body.tel.toString();
     var id=req.body.id.toString();
