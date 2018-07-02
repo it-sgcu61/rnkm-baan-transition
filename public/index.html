@@ -94,8 +94,8 @@
 </head>
 
 <body>
-    username:
-    <input id="username" type="text" />
+    welcome:
+    <label id="username"></label>
     <div id="houses" class="row">
         loading ...
     </div>
@@ -112,6 +112,7 @@
         console.log('4Head');
         var proxy = 'https://cryptic-headland-94862.herokuapp.com/';
         $(document).ready(function () { // init app
+            $('#username').html(getCookie('username'));
             init = () => {
                 $.ajax({
                     url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/getHouses',
@@ -132,7 +133,7 @@
                             newbox.append(card);
                             card.append(cardContent);
                             cardContent.append(joinButton)
-                            
+
                             // var addButton = $('<button class="btn add-button" data-house="' + house.name + '"> add new </button>')
                             // addButton.click({ houseName: house.name }, newPersonToHouse);
                             // cardContent.append(addButton)
@@ -147,40 +148,9 @@
             init();
         });
 
-        addToHouse = function (event) {
-            if ($('#username').val().trim() !== ""){
-                $.ajax({
-                    url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/addPersonToHouse',
-                    contentType: 'applcation/x-www-form-urlencoded',
-                    data: {
-                        id: $('#username').val().trim(),
-                        house: event.data.houseName
-                    },
-                    success: (res) => {alert(res); init();}
-                });
-            } else{
-                console.log('empty username');
-            }
-        }
-        newPersonToHouse = function (event) {
-            return;
-            // if ($('#username').val().trim() !== ""){
-            //     $.ajax({
-            //         url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/addPerson',
-            //         contentType: 'applcation/x-www-form-urlencoded',
-            //         data: {
-            //             id: $('#username').val().trim(),
-            //             house: event.data.houseName
-            //         },
-            //         success: (res) => {alert(res); init();}
-            //     });
-            // } else{
-            //     console.log('empty username');
-            // }
-        }
     </script>
-    <script> // firebase
-        document.addEventListener('DOMContentLoaded', function () {
+    <script> 
+        document.addEventListener('DOMContentLoaded', function () { // not needed at all
             try {
                 let app = firebase.app();
                 let features = ['auth', 'database', 'messaging', 'storage'].filter(feature => typeof app[feature] === 'function');
@@ -190,6 +160,35 @@
                 document.getElementById('load').innerHTML = 'Error loading the Firebase SDK, check the console.';
             }
         });
+        addToHouse = function (event) {
+            $.ajax({
+                url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/movePerson_2',
+                contentType: 'application/x-www-form-urlencoded',
+                method: 'POST',
+                data: {
+                    username: getCookie('username'),
+                    house: event.data.houseName,
+                    token: getCookie('token')
+                },
+                success: (res) => { alert(res); init(); }
+            });
+
+        }
+        function getCookie(cname) {
+            var name = cname + "=";
+            var decodedCookie = decodeURIComponent(document.cookie);
+            var ca = decodedCookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
     </script>
 </body>
 

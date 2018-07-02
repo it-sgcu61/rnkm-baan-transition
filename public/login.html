@@ -1,135 +1,49 @@
-<!DOCTYPE html>
 <html>
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="src/js/jquery-3.3.1.js"></script>
-    <title>Welcome to Firebase Hosting</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/css/materialize.min.css">
-    
-    <script src="https://cdn.firebase.com/libs/firebaseui/2.5.1/firebaseui.js"></script>
-    <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/2.5.1/firebaseui.css" />
-    <!-- Compiled and minified JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/js/materialize.min.js"></script>
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/5.2.0/firebase-app.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/5.2.0/firebase-auth.js"></script>
-    <script defer src="/__/firebase/5.2.0/firebase-database.js"></script>
-    <script defer src="/__/firebase/5.2.0/firebase-messaging.js"></script>
-    <script defer src="/__/firebase/5.2.0/firebase-storage.js"></script>
-    <!-- initialize the SDK after all desired features are loaded -->
-    <script defer src="/__/firebase/init.js"></script>
-
-    <style media="screen">
-        body {
-            background: #ECEFF1;
-            color: rgba(0, 0, 0, 0.87);
-            font-family: Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        #message {
-            background: white;
-            max-width: 360px;
-            margin: 100px auto 16px;
-            padding: 32px 24px;
-            border-radius: 3px;
-        }
-
-        #message h2 {
-            color: #ffa100;
-            font-weight: bold;
-            font-size: 16px;
-            margin: 0 0 8px;
-        }
-
-        #message h1 {
-            font-size: 22px;
-            font-weight: 300;
-            color: rgba(0, 0, 0, 0.6);
-            margin: 0 0 16px;
-        }
-
-        #message p {
-            line-height: 140%;
-            margin: 16px 0 24px;
-            font-size: 14px;
-        }
-
-        #message a {
-            display: block;
-            text-align: center;
-            background: #039be5;
-            text-transform: uppercase;
-            text-decoration: none;
-            color: white;
-            padding: 16px;
-            border-radius: 4px;
-        }
-
-        #message,
-        #message a {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-        }
-
-        #load {
-            color: rgba(0, 0, 0, 0.4);
-            text-align: center;
-            font-size: 13px;
-        }
-
-        @media (max-width: 600px) {
-            body,
-            #message {
-                margin-top: 0;
-                background: white;
-                box-shadow: none;
-            }
-            body {
-                border-top: 16px solid #ffa100;
-            }
-        }
-    </style>
 </head>
 
 <body>
-    <div id="login">
-    </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
+        <label>TEL</label> <input class="tel">
+        <label>ID</label> <input class="idcard">
+        <button id="submit">Login</button>
     <script>
-        //init
-        if (typeof (String.prototype.trim) === "undefined") {
-            String.prototype.trim = function () {
-                return String(this).replace(/^\s+|\s+$/g, '');
-            };
-        }
-        //
         $(document).ready(function(){
-            var ui = new firebaseui.auth.AuthUI(firebase.auth());
-            ui.start('#login', {
-                signInOptions:[
-                    firebase.auth.EmailAuthProvider.PROVIDER_ID
-                ],
+            var proxy = 'https://cryptic-headland-94862.herokuapp.com/'; // credit to pooomrokc LUL
+            var token = document.cookie;
+            $('#submit').on('click', {}, () => {
+                var username = $('.tel').val(); 
+                var password = $('.idcard').val();
+                console.log(username, password);
+                $.ajax({
+                    url: proxy+'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/login',
+                    contentType: 'application/x-www-form-urlencoded',
+                    data: {'username': username, 'password': password},
+                    method: 'POST',
+                    success: function (res){
+                        // console.log(res.cookie);
+                        if (res.success === true){
+                            document.cookie = `token=${res.token}; path=/; expires=${res.expire}`
+                            document.cookie = `username=${username}; path=/; expires=${res.expire}`
+                            // alert(res.message);
+                            window.location.href = 'index.html';
+                        }
+                        else {
+                            alert('wrong id/tel');
+                        }
+                    }
+                });
 
             });
-        });
-
-        
-    </script>
-    <script> // firebase
-        document.addEventListener('DOMContentLoaded', function () {
-            try {
-                let app = firebase.app();
-                let features = ['auth', 'database', 'messaging', 'storage'].filter(feature => typeof app[feature] === 'function');
-                document.getElementById('load').innerHTML = `Firebase SDK loaded with ${features.join(', ')}`;
-            } catch (e) {
-                console.error(e);
-                document.getElementById('load').innerHTML = 'Error loading the Firebase SDK, check the console.';
+            if (token !== ''){
+                // validate
+            }
+            else {
             }
         });
+    
     </script>
 </body>
 
