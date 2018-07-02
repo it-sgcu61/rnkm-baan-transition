@@ -6,6 +6,6 @@ send request to https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/<fu
  - some functions only response to database change 
 
 # WIPs 
- - admin's functions (to fix some errors/ reset password)
+ - admin's functions (to fix some database errors (which shouldn't happen?)/ reset password)
  - lock all change when time expires : adding user expire time ??
  - commit data change to DTNL for some changes (Ex. confirm house) 
