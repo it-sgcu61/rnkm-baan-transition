@@ -12,19 +12,22 @@ exports.getHouses = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.addPersonToHouse = functions.https.onRequest((req, res) => {
+exports.movePerson_2 = functions.https.onRequest((req, res) => {
     // use username (telephone number) and token (from login) to authenticate
     try {
-        var newHouse = req.query.house.trim();
-        var username = req.query.username.trim();
-        var token = req.query.token.trim();
+        var newHouse = req.body.house.trim();
+        var username = req.body.username.trim();
+        var token = req.body.token.trim();
     } catch (error) {
         return res.send('bad request');
     }
     console.log(`req: ID:${username} house:${newHouse}`);    
-    return db.ref('/secure/' + username).once('value').then((snapshot) => {
+    return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire){
+            if (user.locked){
+                return res.send('you have already confirmed your house')
+            }
             return db.ref('/houses/' + newHouse).transaction((house) => {
                 console.log('new house:', house);
                 if (house === null){
@@ -43,18 +46,15 @@ exports.addPersonToHouse = functions.https.onRequest((req, res) => {
                 console.log('add person', err, commited, snapshot.val());
                 if (err)
                     return res.send('err');
-                else if (commited === true && snapshot.val() !== null) // when null --> moving to non existent house
-                    return db.ref('/person/' + username + '/house').once('value').then((snapshot) => {
-                        var oldHouse = snapshot.val();
-                        return db.ref('/houses/' + oldHouse + '/count').transaction((count) => count-1
-                        ,() => {
-                            return db.ref('/person/' + username + '/house').set(newHouse)
-                            .then( () => {
-                                return res.send('Moved!');
-                            }); 
-        
-                        });
-                    });   
+                else if (commited === true && snapshot.val() !== null){ // when null --> moving to non existent house
+                    return db.ref('/houses/' + user.house + '/count').transaction((count) => count-1
+                    ,() => {
+                        return db.ref('/person/' + username + '/house').set(newHouse)
+                        .then( () => {
+                            return res.send('Moved!');
+                        });     
+                    });
+                } 
                 else
                     return res.send('Full house');
             });
@@ -65,21 +65,17 @@ exports.addPersonToHouse = functions.https.onRequest((req, res) => {
     });
 });
 
-
-
-
-
 // send cookie ?? (IDK about security OMEGALUL)
 exports.login = functions.https.onRequest((req, res) => {
     try {
         var username = req.body.username.toString(); 
         var password = req.body.password.toString();
     }
-    catch {
+    catch (err) {
         return res.send('bad request');
     }
     // return res.send(id + '--' +tel);
-    return db.ref('/secure/' + username).once('value').then((snapshot) => {
+    return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && username === user.username){
             // console.log('cmp', password,'and' ,user.password);
@@ -98,7 +94,7 @@ exports.login = functions.https.onRequest((req, res) => {
                         else {
                             var d = new Date();
                             d.setTime(d.getTime() + 4*60*60*1000); // 4hours 
-                            return db.ref('/secure/' + username).update({token: token, tokenExpire: d.getTime()}).then(() => {
+                            return db.ref('/person/' + username).update({token: token, tokenExpire: d.getTime()}).then(() => {
                                 return res.cookie('token', token, {maxAge: 600*1000, secure: true,  encode:String}).send('OK');
                             });
                         }
@@ -121,15 +117,13 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
         var username = req.body.username;
         var token = req.body.token;
     }   
-    catch {
+    catch (err) {
         return res.send('bad request');
     }
-    return db.ref('/secure/' + username).once('value').then((snapshot) =>{
+    return db.ref('/person/' + username).once('value').then((snapshot) =>{
         var user = snapshot.val();
         if (user !== null && username === user.username && token === user.token && Date.now() < user.tokenExpire){
-            return db.ref('/person/' + username).once('value').then((snapshot) => {
-                return res.send(snapshot.val());
-            });
+            return res.send({username: user.username, house: user.house, locked: user.locked});
         }
         else {
             return res.send('wrong token/pass/username');
@@ -144,7 +138,7 @@ exports.addPerson = functions.https.onRequest((req, res) => {
         var id=req.body.id.trim();
         var house=req.body.house.trim();
     }
-    catch {
+    catch (err) {
         return res.send('bad request');
     }
     return db.ref('/houses/' + house).transaction((house) =>{
@@ -167,7 +161,7 @@ exports.addPerson = functions.https.onRequest((req, res) => {
             return res.send('Failed')
         }        
         else if (commited && snapshot.val() !== null){ // register success and person will be added to DB,  when null --> moving to non existent house
-            return db.ref('/secure/' + tel).set({username: tel, password: id, house:house}).then((snapshot) => {
+            return db.ref('/person/' + tel).set({username: tel, password: id, house:house, locked: 0}).then((snapshot) => {
                 return res.send('OK');
             });
         }
@@ -178,36 +172,31 @@ exports.addPerson = functions.https.onRequest((req, res) => {
 });
 
 // only  runs when user added by /addPerson which is likely when new user register
-exports.initPerson = functions.database.ref('/secure/{username}').onCreate((snapshot, context) => {
+exports.initPerson = functions.database.ref('/person/{username}').onCreate((snapshot, context) => {
     // when import data from DTNL (house results + other infos ) create db in /person 
     // and hash Their password 
     // if password sent is already hashed I will remove hashing 
-    var user = snapshot.val();
     // incase of DB is int (please use string even for ID and tel)
+    var user = snapshot.val();
     var username = user.username.toString();
     var password = user.password.toString();
-    var house = user.house.toString(); 
-    return db.ref('/person/' + username).set({house: house, locked: 0}).then(() => {
+    return db.ref('/person/' + username).update({locked: 0}).then(() => {
         return bcrypt.hash(password, 8, (err, hash) => {
             if (err){
                 console.log("error hashing", err);
-                return snapshot.ref.update({hashed: false});
+                return db.ref('/person/' + username).update({hashed: false});
             }
             else {
-                return snapshot.ref.update({hashed: true, password: hash});
+                return db.ref('/person/' + username).update({hashed: true, password: hash});
             }
         });
     });
 });
 
-exports.onPersonDelete = functions.database.ref('/secure/{username}/').onDelete((snapshot, context) => {
+exports.onPersonDelete = functions.database.ref('/person/{username}/').onDelete((snapshot, context) => {
     var user = snapshot.val();
-    var username = user.username;
     var house = user.house;
-    // console.log(snapshot.val(), context);
-    return db.ref('/person/' + username + '/house').remove().then((snapshot) => {
-        console.log(`deleted ${username} (${house})`);
-        return db.ref('/houses/' + house + '/count').transaction((count) => count-1);
-    });
-
+    return db.ref('/houses/' + house + '/count').transaction((count) => count-1);
 });
+
+exports.onHouseLocked = functions.database.ref('/person/')
