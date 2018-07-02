@@ -15,41 +15,53 @@ exports.getHouses = functions.https.onRequest((req, res) => {
 exports.addPersonToHouse = functions.https.onRequest((req, res) => {
     // need some identification ? 
     // id should be ID number(13 digit)?
-
-    var newHouse = req.query.house.trim();
-    var id = req.query.id.trim();
-    console.log(`req: ID:${id} house:${newHouse}`);
-    return db.ref('/houses/' + newHouse).transaction((house) => {
-        console.log('new house:', house);
-        if (house === null){
-            return null;
-        }
-        else if (house.count < house.cap){
-            house.count += 1;
-            console.log('moved!')
-            return house;
+    try {
+        var newHouse = req.query.house.trim();
+        var username = req.query.username.trim();
+        var token = req.query.token.trim();
+    } catch (error) {
+        return res.send('bad request');
+    }
+    console.log(`req: ID:${username} house:${newHouse}`);    
+    return db.ref('/secure/' + username).once('value').then((snapshot) => {
+        var user = snapshot.val();
+        if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire){
+            return db.ref('/houses/' + newHouse).transaction((house) => {
+                console.log('new house:', house);
+                if (house === null){
+                    return null;
+                }
+                else if (house.count < house.cap){
+                    house.count += 1;
+                    console.log('moved!')
+                    return house;
+                }
+                else {
+                    console.log('not')
+                    return ;
+                }
+            }, (err, commited, snapshot) => {
+                if (err)
+                    return res.send('err');
+                else if (commited)
+                    return db.ref('/person/' + username + '/house').once('value').then((snapshot) => {
+                        var oldHouse = snapshot.val();
+                        return db.ref('/houses/' + oldHouse + '/count').transaction((count) => count-1
+                        ,() => {
+                            return db.ref('/person/' + username + '/house').set(newHouse)
+                            .then( () => {
+                                return res.send('Moved!');
+                            }); 
+        
+                        });
+                    });   
+                else
+                    return res.send('Full house');
+            });
         }
         else {
-            console.log('not')
-            return ;
+            return res.send('wrong token');
         }
-    }, (err, commited, snapshot) => {
-        if (err)
-            return res.send('err');
-        else if (commited)
-            return db.ref('/person/' + id + '/house').once('value').then((snapshot) => {
-                var oldHouse = snapshot.val();
-                return db.ref('/houses/' + oldHouse + '/count').transaction((count) => count-1
-                ,() => {
-                    return db.ref('/person/' + id + '/house').set(newHouse)
-                    .then( () => {
-                        return res.send('Moved!');
-                    }); 
-
-                });
-            });   
-        else
-            return res.send('Full house');
     });
 });
 
@@ -59,13 +71,12 @@ exports.addPersonToHouse = functions.https.onRequest((req, res) => {
 
 // send cookie ?? (IDK about security OMEGALUL)
 exports.login = functions.https.onRequest((req, res) => {
-    var id = req.body.id.toString();
-    var tel = req.body.tel.toString();
+    var username = req.body.username.toString(); 
     var password = req.body.password.toString();
     // return res.send(id + '--' +tel);
-    return db.ref('/secure/' + id).once('value').then((snapshot) => {
+    return db.ref('/secure/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
-        if (user !== null && id === user.id && tel === user.tel){
+        if (user !== null && username === user.username){
             // console.log('cmp', password,'and' ,user.password);
             return bcrypt.compare(password, user.password, (err, same) => {
                 if (err){
@@ -81,8 +92,10 @@ exports.login = functions.https.onRequest((req, res) => {
                         }
                         else {
                             var d = new Date();
-                            d.setTime(d.getTime() + 4*60*60*1000);
-                            return res.cookie('token', token, {maxAge: 600*1000, secure: true,  encode:String}).send('OK');
+                            d.setTime(d.getTime() + 4*60*60*1000); // 4hours 
+                            return db.ref('/secure/' + username).update({token: token, tokenExpire: d.getTime()}).then(() => {
+                                return res.cookie('token', token, {maxAge: 600*1000, secure: true,  encode:String}).send('OK');
+                            });
                         }
                     });
                 }
@@ -92,35 +105,59 @@ exports.login = functions.https.onRequest((req, res) => {
             });
         } 
         else {
-            return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong id/tel/'); //change later
+            return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong username'); //change later
         }
     });
 });
 
 // use when register ???
+
+
 exports.addPerson = functions.https.onRequest((req, res) => { 
-    var id=req.body.id.toString();
-    var password=req.body.password.toString();
     var tel=req.body.tel.toString();
+    var id=req.body.id.toString();
     var house=req.body.house.toString();
-    return db.ref('/secure/' + id).set({id:id, password:password, tel:tel, house:house}).then((snapshot) => {
-        return db.ref('/houses/' + house + '/count/').transaction((count) => count+1).then(() =>{
-            return res.send('OK');
-        });
+    return db.ref('/houses/' + house).transaction((house) =>{
+        console.log('add person: house ->', house);
+        if (house === null){
+            return null;
+        }
+        else if (house.count < house.cap){
+            house.count += 1;
+            console.log('addperson: moved!')
+            return house;
+        }
+        else {
+            console.log('addperson: not')
+            return ;
+        }
+    }, (err, commited, snapshot) =>{
+        if (err){
+            console.log("add person err:", err);
+            return res.send('Failed')
+        }        
+        else if (commited){ // register success and person will be added to DB
+            return db.ref('/secure/' + tel).set({username: tel, password: id, house:house}).then((snapshot) => {
+                return res.send('OK');
+            });
+        }
+        else { // register failed coz house is full 
+            return res.send('Full house');
+        }
     });
 });
 
 // only  runs when user added by /addPerson which is likely when new user register
-exports.initPerson = functions.database.ref('/secure/{userId}').onCreate((snapshot, context) => {
+exports.initPerson = functions.database.ref('/secure/{username}').onCreate((snapshot, context) => {
     // when import data from DTNL (house results + other infos ) create db in /person 
     // and hash Their password 
     // if password sent is already hashed I will remove hashing 
     var user = snapshot.val();
     // incase of DB is int (please use string even for ID and tel)
-    var id = user.id.toString();
-    var house = user.house.toString(); 
+    var username = user.username.toString();
     var password = user.password.toString();
-    return db.ref('/person/' + id).set({house: house}).then(() => {
+    var house = user.house.toString(); 
+    return db.ref('/person/' + username).set({house: house, locked: 0}).then(() => {
         return bcrypt.hash(password, 8, (err, hash) => {
             if (err){
                 console.log("error hashing", err);
@@ -131,4 +168,16 @@ exports.initPerson = functions.database.ref('/secure/{userId}').onCreate((snapsh
             }
         });
     });
+});
+
+exports.onPersonDelete = functions.database.ref('/secure/{username}/').onDelete((snapshot, context) => {
+    var user = snapshot.val();
+    var username = user.username;
+    var house = user.house;
+    // console.log(snapshot.val(), context);
+    return db.ref('/person/' + username + '/house').remove().then((snapshot) => {
+        console.log(`deleted ${username} (${house})`);
+        return db.ref('/houses/' + house + '/count').transaction((count) => count-1);
+    });
+
 });
