@@ -23,7 +23,6 @@ exports.setupDTNL = function () { // dtnl interface
                         if (tableFetch.body.tableList.includes(config.rnkmTablename)) {
                             throw new Error("Table configuration invalid.");
                         }
-                        console.log('ag', agent);
                         return Promise.resolve(agent);
                     });
                 }

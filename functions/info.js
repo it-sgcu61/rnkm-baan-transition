@@ -7,7 +7,7 @@ var db = require('./connector').adminClient;
 
 exports.getHouses = functions.https.onRequest((req, res) => {
     return db.ref('/houses').once('value').then(snapshot => {
-        return res.send(snapshot.val());
+        return res.send({success: true, message:'OK', data:snapshot.val()});
     });
 });
 
@@ -18,15 +18,15 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
         var token = req.body.token;
     }
     catch (err) {
-        return res.send('bad request');
+        return res.send({success: false, message: 'bad request'});
     }
     return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && username === user.username && token === user.token && Date.now() < user.tokenExpire) {
-            return res.send({ username: user.username, house: user.house, locked: user.locked });
+            return res.send({success:true, message:'OK', data:{ username: user.username, house: user.house, locked: user.locked }});
         }
         else {
-            return res.send('wrong token/pass/username');
+            return res.send({success: false, message: 'wrong credentials'});
         }
     });
 });

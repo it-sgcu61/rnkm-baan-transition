@@ -27,26 +27,22 @@ exports.login = functions.https.onRequest((req, res) => {
             .then((data) => {
                 if (data.body.body) {
                     return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
-                        // send token
                         if (err) {
                             console.log('token generation err', err);
                             return res.send({ success: false, message: 'error' });
-                            // return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Failed');
                         }
                         else {
                             var d = new Date();
                             d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
                             return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
                                 return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
-                                // return res.cookie('token', token, {maxAge: 600*1000, secure: true,  encode:String}).send('OK');
 
                             });
                         }
                     });
                 }
                 else {
-                    return res.send({ success: false, message: 'wrong password/username' });
-                    // return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong pass'); //change later
+                    return res.send({ success: false, message: 'wrong username/password' });
                 }
             });
     });
@@ -63,41 +59,35 @@ exports.loginOld = functions.https.onRequest((req, res) => {
     return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && username === user.username) {
-            // console.log('cmp', password,'and' ,user.password);
             return bcrypt.compare(password, user.password, (err, same) => {
                 if (err) {
                     console.log('error logging in', err);
-                    // return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Failed');
-                    return res.send({ success: false, message: 'error' });
+                    return res.send({ success: false, message: 'error hashing password'});
                 }
                 else if (same) {
                     return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
                         // send token
                         if (err) {
                             console.log('token generation err', err);
-                            return res.send({ success: false, message: 'error' });
-                            // return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Failed');
+                            return res.send({ success: false, message: 'error generating token'});
                         }
                         else {
                             var d = new Date();
                             d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
                             return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
                                 return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
-                                // return res.cookie('token', token, {maxAge: 600*1000, secure: true,  encode:String}).send('OK');
 
                             });
                         }
                     });
                 }
                 else {
-                    return res.send({ success: false, message: 'wrong password' });
-                    // return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong pass'); //change later
+                    return res.send({ success: false, message: 'wrong username/password'});
                 }
             });
         }
         else {
-            return res.send({ success: false, message: 'wrong username' });
-            // return res.cookie('token', '0', {maxAge: 0, secure: true,  encode:String}).send('Wrong username'); //change later
+            return res.send({ success: false, message: 'wrong username/password'});
         }
     });
 });
@@ -109,7 +99,7 @@ exports.addPerson = functions.https.onRequest((req, res) => {
         var house = req.body.house.trim();
     }
     catch (err) {
-        return res.send('bad request');
+        return res.send({ success: false, message: 'bad request'});
     }
     return db.ref('/houses/' + house).transaction((house) => {
         console.log('add person: house ->', house);
@@ -128,15 +118,18 @@ exports.addPerson = functions.https.onRequest((req, res) => {
     }, (err, commited, snapshot) => {
         if (err) {
             console.log("add person err:", err);
-            return res.send('Failed')
+            return res.send({success: false, message: 'server error'})
         }
-        else if (commited && snapshot.val() !== null) { // register success and person will be added to DB,  when null --> moving to non existent house
+        else if (snapshot.val() === null){
+            return res.send({success: false, message: 'invalid house'});
+        }
+        else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
             return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then((snapshot) => {
-                return res.send('OK');
+                return res.send({success: true, message: 'OK'});
             });
         }
         else { // register failed coz house is full 
-            return res.send('Full house');
+            return res.send({success: false, message: 'full house'});
         }
     });
 });
@@ -175,10 +168,10 @@ exports.ADMIN_resetPassword = functions.https.onRequest((req, res) => {
         var key = req.body.key.toString();
     }
     catch (err) {
-        return res.send('bad request');
+        return res.send({success: false, message: 'bad request'});
     }
     if (key !== config.key) { // to prevent accidental use
-        return res.send('invalid key');
+        return res.send({success: false, message: 'invalid key'});
     }
     return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
@@ -186,17 +179,17 @@ exports.ADMIN_resetPassword = functions.https.onRequest((req, res) => {
             return bcrypt.hash(newPassword, 8, (err, hash) => {
                 if (err) {
                     console.log('password reset failed', err);
-                    return res.send('failed');
+                    return res.send({success: false, message: 'error hashing password'});
                 }
                 else {
                     return db.ref('/person/' + username).update({ hash: true, password: hash, token: 0, tokenExpire: 0 }).then(() => {
-                        return res.send('success');
+                        return res.send({success: true, message: 'OK'});
                     })
                 }
             });
         }
         else {
-            return res.send('user doesn\'t exist');
+            return res.send({success: false, message: 'user doesn\'t exist'});
         }
     });
 });

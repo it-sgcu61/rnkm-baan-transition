@@ -10,50 +10,50 @@ exports.movePerson = functions.https.onRequest((req, res) => {
         var username = req.body.username.toString();
         var token = req.body.token.toString();
     } catch (error) {
-        return res.send('bad request');
+        return res.send({success: false, message: 'bad request'});
     }
-    console.log(`req: ID:${username} house:${newHouse}`);
     return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire) {
             if (user.locked) {
-                return res.send('you have already confirmed your house')
+                return res.send({success: false, message: 'you already confirmed your house!'})
             }
             else {
                 return db.ref('/houses/' + newHouse).transaction((house) => {
-                    console.log('new house:', house);
                     if (house === null) {
                         return null;
                     }
                     else if (house.count < house.cap) {
                         house.count += 1;
-                        console.log('moved!');
                         return house;
                     }
                     else {
-                        console.log('not');
                         return;
                     }
                 }, (err, commited, snapshot) => {
-                    console.log('add person', err, commited, snapshot.val());
-                    if (err)
+                    if (err) {
+                        console.log('movePerson failed', err);
                         return res.send('err');
-                    else if (commited === true && snapshot.val() !== null) { // when null --> moving to non existent house
+                    }
+                    else if (snapshot.val() === null) {
+                        return res.send({ success: false, message: 'invalid house' });
+                    }
+                    else if (commited === true) { // when null --> moving to non existent house
                         return db.ref('/houses/' + user.house + '/count').transaction((count) => count - 1
                             , () => {
                                 return db.ref('/person/' + username + '/house').set(newHouse)
                                     .then(() => {
-                                        return res.send('Moved!');
+                                        return res.send({success: true, message: 'OK'});
                                     });
                             });
                     }
                     else
-                        return res.send('Full house/ house doesn\'t exist');
+                        return res.send({success: false, message: 'full house'});
                 });
             }
         }
         else {
-            return res.send('wrong token/pass/username');
+            return res.send({success: false, message: 'wrong credentials'});
         }
     });
 });
