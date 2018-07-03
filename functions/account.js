@@ -14,13 +14,13 @@ exports.login = functions.https.onRequest((req, res) => {
         return res.send({ success: false, message: 'bad request' });
     }
     return connector.setupDTNL().then((agent) => {
-        console.log(agent);
         return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
             .send({
                 sortby: "",
-                orderby: ""
+                orderby: "",
                 // todo: change this filter (currently no data) so we don't filter
-                // filter: `[{"column_name":"dynamic/tel","expression":"eq","value":"${username}"},{"column_name":"dynamic/nationalID_URL","expression":"eq","value":"${password}"}]`,
+                // filter: `[{"column_name":"tel","expression":"eq","value":"${username}"},{"column_name":"idcard","expression":"eq","value":"${password}"}]`,
+                // filter: `[{"column_name":"tel","expression":"eq","value":"${username}"}]`,
                 // filter: `[{"column_name":"dynamic/เบอร์ติดต่อ","expression":"eq","value":"087-547-1008"}]`,
             })
             .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
@@ -35,7 +35,7 @@ exports.login = functions.https.onRequest((req, res) => {
                             var d = new Date();
                             d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
                             return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
-                                return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
+                                return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString(), data: data.body.body});
 
                             });
                         }
@@ -102,17 +102,14 @@ exports.addPerson = functions.https.onRequest((req, res) => {
         return res.send({ success: false, message: 'bad request'});
     }
     return db.ref('/houses/' + house).transaction((house) => {
-        console.log('add person: house ->', house);
         if (house === null) {
             return null;
         }
         else if (house.count < house.cap) {
             house.count += 1;
-            console.log('addperson: moved!')
             return house;
         }
         else {
-            console.log('addperson: not')
             return;
         }
     }, (err, commited, snapshot) => {

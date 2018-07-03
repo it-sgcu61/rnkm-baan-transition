@@ -58,3 +58,23 @@ exports.movePerson = functions.https.onRequest((req, res) => {
     });
 });
 
+exports.confirmHouse = functions.https.onRequest((req, res) => {
+    try {
+        var username = req.body.username.toString();
+        var token = req.body.token.toString();
+    }
+    catch (err) {
+        return res.send({success: false, message: 'bad request'});
+    }
+    return db.ref('/person/' + username).once('value').then((snapshot) => {
+        var user = snapshot.val();
+        if (user !== null && user.username === username && user.token === token && Date.now() < user.tokenExpire) {
+            return db.ref('/person/' + username + '/locked').set(1).then(() => {
+                return res.send({success: true, message: 'OK'});
+            });
+        }
+        else {
+            return res.send({success: false, message: 'invalid credentials'});
+        }
+    });
+});

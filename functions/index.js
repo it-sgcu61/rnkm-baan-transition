@@ -12,10 +12,10 @@ var account = require('./account');
 
 exports.getHouses = info.getHouses;
 exports.getPersonInfo = info.getPersonInfo;
-
+exports.getPersonInfoOld = info.getPersonInfoOld;
 // operation related to changing person
 exports.movePerson = operation.movePerson;
-
+exports.confirmHouse = operation.confirmHouse;
 
 
 // operations related to accounts

@@ -1,8 +1,8 @@
 var functions = require('firebase-functions');
 var admin = require('firebase-admin');
-
-
-var db = require('./connector').adminClient;
+var connector = require('./connector');
+var config = require('./config');
+var db = connector.adminClient;
 
 
 exports.getHouses = functions.https.onRequest((req, res) => {
@@ -11,11 +11,11 @@ exports.getHouses = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.getPersonInfo = functions.https.onRequest((req, res) => {
+exports.getPersonInfoOld = functions.https.onRequest((req, res) => {
     // maybe we sent person's name/other info too?? (currently what house and whether person has confirmed his choice)
     try {
-        var username = req.body.username;
-        var token = req.body.token;
+        var username = req.body.username.toString();
+        var token = req.body.token.toString();
     }
     catch (err) {
         return res.send({success: false, message: 'bad request'});
@@ -24,6 +24,36 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
         var user = snapshot.val();
         if (user !== null && username === user.username && token === user.token && Date.now() < user.tokenExpire) {
             return res.send({success:true, message:'OK', data:{ username: user.username, house: user.house, locked: user.locked }});
+        }
+        else {
+            return res.send({success: false, message: 'wrong credentials'});
+        }
+    });
+});
+exports.getPersonInfo = functions.https.onRequest((req, res) => {
+    // maybe we sent person's name/other info too?? (currently what house and whether person has confirmed his choice)
+    try {
+        var username = req.body.username.toString();
+        var token = req.body.token.toString();
+    }
+    catch (err) {
+        return res.send({success: false, message: 'bad request'});
+    }
+    return db.ref('/person/' + username).once('value').then((snapshot) => {
+        var user = snapshot.val();
+        if (user !== null && username === user.username && token === user.token && Date.now() < user.tokenExpire) {
+            return connector.setupDTNL().then((agent) => {
+                return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
+                    .send({
+                        sortby: "",
+                        orderby: "",
+                        // filter: `[{"column_name":"dynamic/tel","expression":"eq","value":"${username}"}]`,
+                    })
+                    .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
+                    .then((data) => {
+                        return res.send({success: true, message:'OK', data:data.body.body});
+                    });
+            });
         }
         else {
             return res.send({success: false, message: 'wrong credentials'});
