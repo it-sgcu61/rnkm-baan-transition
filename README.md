@@ -2,7 +2,7 @@
 Baan transition system with NodeJS x Firebase x DatanaliEZ
 
 # how to use
-send request to https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/<function name> 
+send POST request to `https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/<function name>` 
  - some functions only response to database change 
 
 # WIPs 
