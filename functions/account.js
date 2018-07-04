@@ -36,7 +36,7 @@ exports.login = functions.https.onRequest((req, res) => {
                             }
                             else {
                                 var d = new Date();
-                                d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
+                                d.setTime(d.getTime() + config.tokenAge); // 4hours 
                                 return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
                                     return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
 
