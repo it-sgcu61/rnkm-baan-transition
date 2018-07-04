@@ -2,8 +2,11 @@ var functions = require('firebase-functions');
 var bcrypt = require('bcrypt');
 var config = require('./config');
 var connector = require('./connector');
+var esc = require('./util').stringEscape;
 
 var db = require('./connector').adminClient;
+
+
 
 exports.login = functions.https.onRequest((req, res) => {
     try {
@@ -19,13 +22,11 @@ exports.login = functions.https.onRequest((req, res) => {
                 sortby: "",
                 orderby: "",
                 // todo: change this filter (currently no data) so we don't filter
-                // filter: `[{"column_name":"tel","expression":"eq","value":"${username}"},{"column_name":"idcard","expression":"eq","value":"${password}"}]`,
-                // filter: `[{"column_name":"tel","expression":"eq","value":"${username}"}]`,
-                // filter: `[{"column_name":"dynamic/เบอร์ติดต่อ","expression":"eq","value":"087-547-1008"}]`,
+                filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"},{"column_name":"idcard","expression":"like","value": "^${esc(password)}$"}]`,
             })
-            .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
+            .withCredentials().catch((err) => { console.log(err)})
             .then((data) => {
-                if (data.body.body) {
+                if (data && data.body.body) {
                     return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
                         if (err) {
                             console.log('token generation err', err);
@@ -35,7 +36,7 @@ exports.login = functions.https.onRequest((req, res) => {
                             var d = new Date();
                             d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
                             return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
-                                return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString(), data: data.body.body});
+                                return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString()});
 
                             });
                         }
@@ -94,9 +95,10 @@ exports.loginOld = functions.https.onRequest((req, res) => {
 
 exports.addPerson = functions.https.onRequest((req, res) => {
     try {
-        var tel = req.body.tel.trim();
-        var id = req.body.id.trim();
-        var house = req.body.house.trim();
+        var data = req.body.data; // form info as JSON
+        var tel = data['tel'];
+        var id = data['id'];
+        var house = data['house'];
     }
     catch (err) {
         return res.send({ success: false, message: 'bad request'});
@@ -121,6 +123,7 @@ exports.addPerson = functions.https.onRequest((req, res) => {
             return res.send({success: false, message: 'invalid house'});
         }
         else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
+            // TODO: add DTNL here
             return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then((snapshot) => {
                 return res.send({success: true, message: 'OK'});
             });

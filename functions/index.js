@@ -16,7 +16,8 @@ exports.getPersonInfoOld = info.getPersonInfoOld;
 // operation related to changing person
 exports.movePerson = operation.movePerson;
 exports.confirmHouse = operation.confirmHouse;
-
+exports.onHouseConfirmed = operation.onHouseConfirmed;
+exports.ADMIN_lockall = operation.ADMIN_lockAll;
 
 // operations related to accounts
 exports.login = account.login;
@@ -24,5 +25,5 @@ exports.loginOld = account.loginOld;
 exports.addPerson = account.addPerson;
 exports.initPerson = account.initPerson
 exports.onPersonDelete = account.onPersonDelete;
-exports.ADMIN_resetPassword = account.ADMIN_resetPassword;
+// exports.ADMIN_resetPassword = account.ADMIN_resetPassword;
 

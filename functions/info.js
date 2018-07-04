@@ -4,6 +4,7 @@ var connector = require('./connector');
 var config = require('./config');
 var db = connector.adminClient;
 
+var esc = require('./util').stringEscape;
 
 exports.getHouses = functions.https.onRequest((req, res) => {
     return db.ref('/houses').once('value').then(snapshot => {
@@ -47,11 +48,11 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
                     .send({
                         sortby: "",
                         orderby: "",
-                        // filter: `[{"column_name":"dynamic/tel","expression":"eq","value":"${username}"}]`,
+                        filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"}]`
                     })
                     .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
                     .then((data) => {
-                        return res.send({success: true, message:'OK', data:data.body.body});
+                        return res.send({success: true, message:'OK', data:data.body.body[0]});
                     });
             });
         }
