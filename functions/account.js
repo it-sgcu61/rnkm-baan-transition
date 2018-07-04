@@ -187,7 +187,14 @@ exports.initPerson = functions.database.ref('/person/{username}').onCreate((snap
 exports.onPersonDelete = functions.database.ref('/person/{username}/').onDelete((snapshot, context) => {
     var user = snapshot.val();
     var house = user.house;
-    return db.ref('/houses/' + house + '/count').transaction((count) => count - 1);
+    return db.ref('/houses/' + house + '/count').transaction((count) => {
+        if (typeof count === 'number' ){
+            return count - 1;
+        }
+        else {
+            return ;
+        }
+    });
 });
 
 exports.ADMIN_resetPassword = functions.https.onRequest((req, res) => {
