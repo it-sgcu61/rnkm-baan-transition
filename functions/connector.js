@@ -26,6 +26,6 @@ exports.setupDTNL = function () { // dtnl interface
                         return Promise.resolve(agent);
                     });
                 }
-            }).catch((err) => console.log(err));
+            }).catch((err) => console.log("DTNL", err));
     });
 }

@@ -1,3 +1,3 @@
 exports.stringEscape = function (str){
-    return (str + '').replace(/[\\"']/g, '\\$&');
+    return (String(str) + '').replace(/[\\"']/g, '\\$&');
 }

@@ -17,35 +17,41 @@ exports.login = functions.https.onRequest((req, res) => {
         return res.send({ success: false, message: 'bad request' });
     }
     return connector.setupDTNL().then((agent) => {
-        return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
-            .send({
-                sortby: "",
-                orderby: "",
-                // todo: change this filter (currently no data) so we don't filter
-                filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"},{"column_name":"idcard","expression":"like","value": "^${esc(password)}$"}]`,
-            })
-            .withCredentials().catch((err) => { console.log(err)})
-            .then((data) => {
-                if (data && data.body.body) {
-                    return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
-                        if (err) {
-                            console.log('token generation err', err);
-                            return res.send({ success: false, message: 'error' });
-                        }
-                        else {
-                            var d = new Date();
-                            d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
-                            return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
-                                return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString()});
+        // console.log(agent);
+        if (!agent) {
+            console.log('error connecting to DTNL');
+            return res.send({ success: false, message: 'error connecting to DTNL' });
+        }
+        else {
+            return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
+                .send({
+                    sortby: "",
+                    orderby: "",
+                    filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"},{"column_name":"idcard","expression":"like","value": "^${esc(password)}$"}]`,
+                })
+                .withCredentials().catch((err) => { console.log(err) })
+                .then((data) => {
+                    if (data && data.body.body) {
+                        return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
+                            if (err) {
+                                console.log('token generation err', err);
+                                return res.send({ success: false, message: 'error' });
+                            }
+                            else {
+                                var d = new Date();
+                                d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
+                                return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
+                                    return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
 
-                            });
-                        }
-                    });
-                }
-                else {
-                    return res.send({ success: false, message: 'wrong username/password' });
-                }
-            });
+                                });
+                            }
+                        });
+                    }
+                    else {
+                        return res.send({ success: false, message: 'wrong username/password' });
+                    }
+                });
+        }
     });
 });
 
@@ -63,14 +69,14 @@ exports.loginOld = functions.https.onRequest((req, res) => {
             return bcrypt.compare(password, user.password, (err, same) => {
                 if (err) {
                     console.log('error logging in', err);
-                    return res.send({ success: false, message: 'error hashing password'});
+                    return res.send({ success: false, message: 'error hashing password' });
                 }
                 else if (same) {
                     return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
                         // send token
                         if (err) {
                             console.log('token generation err', err);
-                            return res.send({ success: false, message: 'error generating token'});
+                            return res.send({ success: false, message: 'error generating token' });
                         }
                         else {
                             var d = new Date();
@@ -83,25 +89,25 @@ exports.loginOld = functions.https.onRequest((req, res) => {
                     });
                 }
                 else {
-                    return res.send({ success: false, message: 'wrong username/password'});
+                    return res.send({ success: false, message: 'wrong username/password' });
                 }
             });
         }
         else {
-            return res.send({ success: false, message: 'wrong username/password'});
+            return res.send({ success: false, message: 'wrong username/password' });
         }
     });
 });
 
 exports.addPerson = functions.https.onRequest((req, res) => {
     try {
-        var data = req.body.data; // form info as JSON
+        var data = req.body.data; // form info as JSON, send to DTNL
         var tel = data['tel'];
         var id = data['id'];
         var house = data['house'];
     }
     catch (err) {
-        return res.send({ success: false, message: 'bad request'});
+        return res.send({ success: false, message: 'bad request' });
     }
     return db.ref('/houses/' + house).transaction((house) => {
         if (house === null) {
@@ -117,19 +123,30 @@ exports.addPerson = functions.https.onRequest((req, res) => {
     }, (err, commited, snapshot) => {
         if (err) {
             console.log("add person err:", err);
-            return res.send({success: false, message: 'server error'})
+            return res.send({ success: false, message: 'server error' })
         }
-        else if (snapshot.val() === null){
-            return res.send({success: false, message: 'invalid house'});
+        else if (snapshot.val() === null) {
+            return res.send({ success: false, message: 'invalid house' });
         }
         else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
-            // TODO: add DTNL here
-            return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then((snapshot) => {
-                return res.send({success: true, message: 'OK'});
+            return connector.setupDTNL().then(agent => {
+                if (!agent) {
+                    console.log('error connecting to DTNL');
+                    return res.send({ success: false, message: 'error connecting to DTNL' });
+                }
+                else {
+                    // return agent.post('')
+                    //// TODO: add DTNL form API here
+                    return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then(() => {
+                        return res.send({ success: true, message: 'OK' });
+                        // return res.send('OK');
+                    });
+
+                }
             });
         }
         else { // register failed coz house is full 
-            return res.send({success: false, message: 'full house'});
+            return res.send({ success: false, message: 'full house' });
         }
     });
 });
@@ -168,10 +185,10 @@ exports.ADMIN_resetPassword = functions.https.onRequest((req, res) => {
         var key = req.body.key.toString();
     }
     catch (err) {
-        return res.send({success: false, message: 'bad request'});
+        return res.send({ success: false, message: 'bad request' });
     }
     if (key !== config.key) { // to prevent accidental use
-        return res.send({success: false, message: 'invalid key'});
+        return res.send({ success: false, message: 'invalid key' });
     }
     return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
@@ -179,17 +196,17 @@ exports.ADMIN_resetPassword = functions.https.onRequest((req, res) => {
             return bcrypt.hash(newPassword, 8, (err, hash) => {
                 if (err) {
                     console.log('password reset failed', err);
-                    return res.send({success: false, message: 'error hashing password'});
+                    return res.send({ success: false, message: 'error hashing password' });
                 }
                 else {
                     return db.ref('/person/' + username).update({ hash: true, password: hash, token: 0, tokenExpire: 0 }).then(() => {
-                        return res.send({success: true, message: 'OK'});
+                        return res.send({ success: true, message: 'OK' });
                     })
                 }
             });
         }
         else {
-            return res.send({success: false, message: 'user doesn\'t exist'});
+            return res.send({ success: false, message: 'user doesn\'t exist' });
         }
     });
 });
