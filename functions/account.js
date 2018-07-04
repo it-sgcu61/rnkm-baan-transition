@@ -100,7 +100,7 @@ exports.loginOld = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.addPerson = functions.https.onRequest((req, res) => {
+exports.register = functions.https.onRequest((req, res) => {
     try {
         var formData = req.body.formData; // form info as JSON, send to DTNL
         var tel = formData['tel'].toString();
