@@ -2,8 +2,10 @@ var functions = require('firebase-functions');
 var bcrypt = require('bcrypt');
 var config = require('./config');
 var connector = require('./connector');
-var esc = require('./util').stringEscape;
 
+
+var esc = require('./util').stringEscape;
+var verify = require('./util').verifyForm;
 var db = require('./connector').adminClient;
 
 
@@ -17,7 +19,6 @@ exports.login = functions.https.onRequest((req, res) => {
         return res.send({ success: false, message: 'bad request' });
     }
     return connector.setupDTNL().then((agent) => {
-        // console.log(agent);
         if (!agent) {
             console.log('error connecting to DTNL');
             return res.send({ success: false, message: 'error connecting to DTNL' });
@@ -101,10 +102,13 @@ exports.loginOld = functions.https.onRequest((req, res) => {
 
 exports.addPerson = functions.https.onRequest((req, res) => {
     try {
-        var data = req.body.data; // form info as JSON, send to DTNL
-        var tel = data['tel'];
-        var id = data['id'];
-        var house = data['house'];
+        var formData = req.body.formData; // form info as JSON, send to DTNL
+        var tel = formData['tel'].toString();
+        var id = formData['id'].toString();
+        var house = formData['house'].toString();
+        // add some more verify here (ex tel phone verify)
+        if (verify(formData) === false)
+            return res.send({success: false, message: 'please check your form data again'});
     }
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
@@ -132,16 +136,24 @@ exports.addPerson = functions.https.onRequest((req, res) => {
             return connector.setupDTNL().then(agent => {
                 if (!agent) {
                     console.log('error connecting to DTNL');
-                    return res.send({ success: false, message: 'error connecting to DTNL' });
+                    return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
+                        return res.send({ success: false, message: 'error connecting to DTNL' });
+                    });   
                 }
                 else {
-                    // return agent.post('')
-                    //// TODO: add DTNL form API here
-                    return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then(() => {
-                        return res.send({ success: true, message: 'OK' });
-                        // return res.send('OK');
+                    return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${config.formId}`)
+                    .send(formData)
+                    .then(() => {
+                        return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then(() => {
+                            return res.send({ success: true, message: 'OK' });
+                                // return res.send('OK');
+                            });
+                    }).catch((err) => {
+                        console.log('regist error',err);
+                        return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
+                            return res.send({success: false, message: 'DTNL error'});
+                        });
                     });
-
                 }
             });
         }

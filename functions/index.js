@@ -22,7 +22,7 @@ exports.ADMIN_lockall = operation.ADMIN_lockAll;
 // operations related to accounts
 exports.login = account.login;
 exports.loginOld = account.loginOld; 
-exports.addPerson = account.addPerson;
+exports.register = account.register;
 exports.initPerson = account.initPerson
 exports.onPersonDelete = account.onPersonDelete;
 // exports.ADMIN_resetPassword = account.ADMIN_resetPassword;
