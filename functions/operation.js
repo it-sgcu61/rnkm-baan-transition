@@ -87,11 +87,7 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
     var username = context.params.username;
     if (snapshot.val() === 1) { // confirmed 
         return connector.setupDTNL().then(agent => {
-            if (!agent){
-                console.log('error connecting to DTNL');
-                return res.send({success: false, message: 'error connecting to DTNL'});
-            }
-            else {
+            try {
                 return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`) // find _id of DTNL db first so we can update
                     .send({
                         sortby: "",
@@ -109,22 +105,26 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
                             .then(() => {
                                 return res.send({ success: true, message: 'OK' })
                             })
-    
+
                     });
+            }
+            catch (err) { // eror when agent == undefined (when connection err ?)
+                console.log('error connecting to DTNL', err);
+                return res.send({ success: false, message: 'error connecting to DTNL' });
             }
         });
     }
-    return ;
+    return;
 });
 
 exports.ADMIN_lockAll = functions.https.onRequest((req, res) => { // to lockall person and submit data to DTNL, 
     try {
         var key = req.body.key.toString();
         if (key !== config.key)
-            return res.send({success: false, message:'invalid key'});
+            return res.send({ success: false, message: 'invalid key' });
     }
     catch (err) {
-        return res.send({success: false, message:'bad request'});
+        return res.send({ success: false, message: 'bad request' });
     }
     return db.ref('/person').on('child_added', (snapshot) => {
         return snapshot.ref.child('locked').set(1);

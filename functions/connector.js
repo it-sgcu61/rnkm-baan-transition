@@ -17,10 +17,12 @@ exports.setupDTNL = function () { // dtnl interface
             .withCredentials()
             .then(login_result => {
                 if (login_result.body.permission === -1) {
+                    console.log('Failed to connect to DTNL system.')
                     throw new Error("Failed to connect to DTNL system.");
                 } else {
                     return agent.get(`http://${config.dtnlADDR}/api/v1/get/tableList`).withCredentials().then(tableFetch => {
                         if (tableFetch.body.tableList.includes(config.rnkmTablename)) {
+                            console.log('Table configuration invalid.');
                             throw new Error("Table configuration invalid.");
                         }
                         return Promise.resolve(agent);

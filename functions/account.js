@@ -19,11 +19,7 @@ exports.login = functions.https.onRequest((req, res) => {
         return res.send({ success: false, message: 'bad request' });
     }
     return connector.setupDTNL().then((agent) => {
-        if (!agent) {
-            console.log('error connecting to DTNL');
-            return res.send({ success: false, message: 'error connecting to DTNL' });
-        }
-        else {
+        try {
             return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
                 .send({
                     sortby: "",
@@ -52,6 +48,10 @@ exports.login = functions.https.onRequest((req, res) => {
                         return res.send({ success: false, message: 'wrong username/password' });
                     }
                 });
+        }
+        catch (err) {
+            console.log('error connecting to DTNL', err);
+            return res.send({ success: false, message: 'error connecting to DTNL' });
         }
     });
 });

@@ -6,14 +6,13 @@ var db = connector.adminClient;
 
 var esc = require('./util').stringEscape;
 
-exports.getHouses = functions.https.onRequest((req, res) => {
+exports.getHouses = functions.https.onRequest((req, res) => { 
     return db.ref('/houses').once('value').then(snapshot => {
         return res.send({success: true, message:'OK', data:snapshot.val()});
     });
 });
 
 exports.getPersonInfoOld = functions.https.onRequest((req, res) => {
-    // maybe we sent person's name/other info too?? (currently what house and whether person has confirmed his choice)
     try {
         var username = req.body.username.toString();
         var token = req.body.token.toString();
@@ -44,16 +43,22 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
         var user = snapshot.val();
         if (user !== null && username === user.username && token === user.token && Date.now() < user.tokenExpire) {
             return connector.setupDTNL().then((agent) => {
-                return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
-                    .send({
-                        sortby: "",
-                        orderby: "",
-                        filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"}]`
-                    })
-                    .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
-                    .then((data) => {
-                        return res.send({success: true, message:'OK', data:data.body.body[0]});
-                    });
+                try {
+                    return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
+                        .send({
+                            sortby: "",
+                            orderby: "",
+                            filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"}]`
+                        })
+                        .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
+                        .then((data) => {
+                            return res.send({success: true, message:'OK', data:data.body.body[0]});
+                        });
+                }
+                catch (err) {
+                    console.log('error connecting to DTNL');
+                    return res.send({ success: false, message: 'error connecting to DTNL' });
+                }
             });
         }
         else {
