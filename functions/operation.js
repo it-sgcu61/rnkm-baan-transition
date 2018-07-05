@@ -3,7 +3,7 @@ var config = require('./config');
 
 var connector = require('./connector');
 var db = connector.adminClient;
-
+var esc = require('./util').stringEscape;
 
 exports.movePerson = functions.https.onRequest((req, res) => {
     // use username (telephone number) and token (from login) to authenticate
@@ -85,11 +85,13 @@ exports.confirmHouse = functions.https.onRequest((req, res) => {
 
 exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').onUpdate((snapshot, context) => {
     var username = context.params.username;
-    if (snapshot.val() === 1) { // confirmed 
+    // console.log(typeof snapshot, snapshot);
+    if (snapshot.after.val() === 1) { // confirmed 
         return connector.setupDTNL().then(agent => {
             if (!agent) { // eror when agent == undefined (when connection err ?)
                 console.log('error connecting to DTNL', err);
-                return res.send({ success: false, message: 'error connecting to DTNL' });
+                return 0;
+                // return res.send({ success: false, message: 'error connecting to DTNL' });
             }
             else {
                 return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`) // find _id of DTNL db first so we can update
@@ -101,20 +103,18 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
                     .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
                     .then((data) => { // now edit data
                         var _id = data.body.body[0]["_id"];
-                        return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
-                            .send({
-                                modify_list: `{"idList":["${_id}"],"modifyList":[{"columnName":"${config.houseColumn}","value":"\\"${esc(user.house)}\\""}]}`
-                            })
-                            .withCredentials().catch((err) => { console.log(err); return res.send({ success: false, message: 'DTNL error' }) })
-                            .then(() => {
-                                return res.send({ success: true, message: 'OK' })
-                            })
-
+                        return snapshot.after.ref.parent.child('house').once('value').then((house) => {
+                            return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
+                                .send({
+                                    modify_list: `{"idList":["${_id}"],"modifyList":[{"columnName":"${config.houseColumn}","value":"\\"${esc(house.val())}\\""}]}`
+                                })
+                                .withCredentials().catch((err) => { console.log(err); return res.send({ success: false, message: 'DTNL error' }) }) // OK
+                        })
                     });
             }
         });
     }
-    return;
+    return 1;
 });
 
 exports.ADMIN_lockAll = functions.https.onRequest((req, res) => { // to lockall person and submit data to DTNL, 
