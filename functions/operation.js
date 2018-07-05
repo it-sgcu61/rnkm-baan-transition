@@ -87,19 +87,23 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
     var username = context.params.username;
     if (snapshot.val() === 1) { // confirmed 
         return connector.setupDTNL().then(agent => {
-            try {
+            if (!agent) { // eror when agent == undefined (when connection err ?)
+                console.log('error connecting to DTNL', err);
+                return res.send({ success: false, message: 'error connecting to DTNL' });
+            }
+            else {
                 return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`) // find _id of DTNL db first so we can update
                     .send({
                         sortby: "",
                         orderby: "",
-                        filter: `[{"column_name":"tel","expression":"like","value": "^${esc(username)}$"}]`
+                        filter: `[{"column_name":"${config.telColumn}","expression":"like","value": "^${esc(username)}$"}]`
                     })
                     .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
                     .then((data) => { // now edit data
                         var _id = data.body.body[0]["_id"];
                         return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
                             .send({
-                                modify_list: `{"idList":["${_id}"],"modifyList":[{"columnName":"house","value":"\\"${esc(user.house)}\\""}]}`
+                                modify_list: `{"idList":["${_id}"],"modifyList":[{"columnName":"${config.houseColumn}","value":"\\"${esc(user.house)}\\""}]}`
                             })
                             .withCredentials().catch((err) => { console.log(err); return res.send({ success: false, message: 'DTNL error' }) })
                             .then(() => {
@@ -107,10 +111,6 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
                             })
 
                     });
-            }
-            catch (err) { // eror when agent == undefined (when connection err ?)
-                console.log('error connecting to DTNL', err);
-                return res.send({ success: false, message: 'error connecting to DTNL' });
             }
         });
     }
