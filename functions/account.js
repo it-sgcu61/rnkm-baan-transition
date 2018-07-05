@@ -9,7 +9,6 @@ var verify = require('./util').verifyForm;
 var db = require('./connector').adminClient;
 
 
-
 exports.login = functions.https.onRequest((req, res) => {
     try {
         var username = req.body.username.toString();
@@ -28,7 +27,7 @@ exports.login = functions.https.onRequest((req, res) => {
                 .send({
                     sortby: "",
                     orderby: "",
-                    filter: `[{"column_name":"${config.telColumn}","expression":"like","value": "^${esc(username)}$"},{"column_name":"${config.idColumn}","expression":"eq","value": "^${esc(password)}$"}]`,
+                    filter: `[{"column_name":"${config.telColumn}","expression":"like","value": "^${esc(username)}$"},{"column_name":"${config.idColumn}","expression":"like","value": "^${esc(password)}$"}]`,
                 })
                 .withCredentials().catch((err) => { console.log(err) })
                 .then((data) => {
@@ -104,64 +103,75 @@ exports.loginOld = functions.https.onRequest((req, res) => {
 exports.register = functions.https.onRequest((req, res) => {
     try {
         var formData = req.body.formData; // form info as JSON, send to DTNL
-        var tel = formData['tel'].toString();
-        var id = formData['id'].toString();
-        var house = formData['house'].toString();
+        if (typeof formData !== 'object'){
+            formData = JSON.parse(formData);
+        }
+        var tel = formData[config.telColumn].toString();
+        var id = formData[config.idColumn].toString();
+        var house = formData[config.houseColumn].toString();
         // add some more verify here (ex tel phone verify)
         if (verify(formData) === false)
-            return res.send({success: false, message: 'please check your form data again'});
+            return res.send({success: false, message: 'please check your form data and try again'});
     }
     catch (err) {
+        console.log(err);
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/houses/' + house).transaction((house) => {
-        if (house === null) {
-            return null;
-        }
-        else if (house.count < house.cap) {
-            house.count += 1;
-            return house;
+    return db.ref('/person/' + tel).once('value').then((snapshot) => {
+        if (snapshot.val() !== null){
+            return res.send({success:false, message:'you already registered'});
         }
         else {
-            return;
-        }
-    }, (err, commited, snapshot) => {
-        if (err) {
-            console.log("add person err:", err);
-            return res.send({ success: false, message: 'server error' })
-        }
-        else if (snapshot.val() === null) {
-            return res.send({ success: false, message: 'invalid house' });
-        }
-        else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
-            return connector.setupDTNL().then(agent => {
-                if (!agent) {
-                    console.log('error connecting to DTNL');
-                    return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
-                        return res.send({ success: false, message: 'error connecting to DTNL' });
-                    });   
+            return db.ref('/houses/' + house).transaction((house) => {
+                if (house === null) {
+                    return null;
+                }
+                else if (house.count < house.cap) {
+                    house.count += 1;
+                    return house;
                 }
                 else {
-                    return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${config.formId}`)
-                    .send(formData)
-                    .then(() => {
-                        return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then(() => {
-                            return res.send({ success: true, message: 'OK' });
-                                // return res.send('OK');
+                    return;
+                }
+            }, (err, commited, snapshot) => {
+                if (err) {
+                    console.log("add person err:", err);
+                    return res.send({ success: false, message: 'server error' })
+                }
+                else if (snapshot.val() === null) {
+                    return res.send({ success: false, message: 'invalid house' });
+                }
+                else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
+                    return connector.setupDTNL().then(agent => {
+                        if (!agent) {
+                            console.log('error connecting to DTNL');
+                            return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
+                                return res.send({ success: false, message: 'error connecting to DTNL' });
+                            });   
+                        }
+                        else {
+                            return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${config.formId}`)
+                            .send(formData)
+                            .then(() => {
+                                return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then(() => {
+                                    return res.send({ success: true, message: 'OK' });
+                                        // return res.send('OK');
+                                    });
+                            }).catch((err) => {
+                                console.log('regist error',err);
+                                return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
+                                    return res.send({success: false, message: 'DTNL error'});
+                                });
                             });
-                    }).catch((err) => {
-                        console.log('regist error',err);
-                        return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
-                            return res.send({success: false, message: 'DTNL error'});
-                        });
+                        }
                     });
+                }
+                else { // register failed coz house is full 
+                    return res.send({ success: false, message: 'full house' });
                 }
             });
         }
-        else { // register failed coz house is full 
-            return res.send({ success: false, message: 'full house' });
-        }
-    });
+    })
 });
 
 exports.initPerson = functions.database.ref('/person/{username}').onCreate((snapshot, context) => {
