@@ -56,6 +56,7 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
                         })
                         .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
                         .then((data) => {
+                            data.body.body[0]['house'] = user.house;
                             return res.send({success: true, message:'OK', data:data.body.body[0]});
                         });
                 }
