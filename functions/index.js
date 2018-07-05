@@ -22,6 +22,7 @@ exports.ADMIN_lockall = operation.ADMIN_lockAll;
 
 // operations related to accounts
 exports.login = account.login;
+exports.logout = account.logout;
 // exports.loginOld = account.loginOld; 
 exports.register = account.register;
 exports.initPerson = account.initPerson

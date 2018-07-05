@@ -56,6 +56,27 @@ exports.login = functions.https.onRequest((req, res) => {
     });
 });
 
+exports.logout = functions.https.onRequest((req, res) => {
+    try {
+        var username = req.body.username.toString();
+        var token = req.body.token.toString();
+    }
+    catch (err) {
+        return res.send({ success: false, message: 'bad request' });
+    }
+    return db.ref('/person/' + username).once('value').then((snapshot) => {
+        var user = snapshot.val();
+        if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire){
+            return snapshot.ref.child('tokenExpire').set(0).then(() => {
+                return res.send({success: true, message:'OK'});
+            })
+        }  
+        else {
+            return res.send({success: false, message:'wrong credentials'});
+        }
+    });
+});
+
 exports.loginOld = functions.https.onRequest((req, res) => {
     try {
         var username = req.body.username.toString();
