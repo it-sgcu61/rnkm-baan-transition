@@ -15,7 +15,8 @@ telephone number is used as **username** and idcard number is used as **password
 |movePerson| POST | username, house, token| Change person's house to specified house, if possible; return JSON indicating whether operation is success|
 |confirmHouse| POST | username, token | Confirm(lock) user's house and send house to DTNL|
 |login| POST | username, password | Returns token to be used by other functions|
-|register| POST | formData (JSON), adminKey | Register new person (failed if house is full)|
-|ADMIN_lockall| POST | adminKey | Confirm all people's house (and send to DTNL)|
+|register| POST | formData (JSON), key, lang ("EN" or "TH") | Register new person (failed if house is full)|
+|ADMIN_lockall| POST |key | Confirm all people's house (and send to DTNL)|
 
+key = admin key (in config.js; not uploaded)
 
