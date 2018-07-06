@@ -127,9 +127,12 @@ exports.register = functions.https.onRequest((req, res) => {
         if (typeof formData !== 'object'){
             formData = JSON.parse(formData);
         }
+        console.log(formData);
         var tel = formData[config.telColumn].toString();
         var id = formData[config.idColumn].toString();
         var house = formData[config.houseColumn].toString();
+        var lang = req.body.lang;
+        var formId = config.formId[lang].toString();
         // add some more verify here (ex tel phone verify)
         if (verify(formData) === false)
             return res.send({success: false, message: 'please check your form data and try again'});
@@ -171,7 +174,7 @@ exports.register = functions.https.onRequest((req, res) => {
                             });   
                         }
                         else {
-                            return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${config.formId}`)
+                            return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
                             .send(formData)
                             .then(() => {
                                 return db.ref('/person/' + tel).set({ username: tel, house: house, locked: 0 }).then(() => {
