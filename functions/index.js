@@ -25,7 +25,7 @@ exports.login = account.login;
 exports.logout = account.logout;
 // exports.loginOld = account.loginOld; 
 exports.register = account.register;
-exports.initPerson = account.initPerson
+// exports.initPerson = account.initPerson
 exports.onPersonDelete = account.onPersonDelete;
 // exports.ADMIN_resetPassword = account.ADMIN_resetPassword;
 

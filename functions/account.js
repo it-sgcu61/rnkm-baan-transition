@@ -174,7 +174,7 @@ exports.register = functions.https.onRequest((req, res) => {
                             return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${config.formId}`)
                             .send(formData)
                             .then(() => {
-                                return db.ref('/person/' + tel).set({ username: tel, password: id, house: house, locked: 0 }).then(() => {
+                                return db.ref('/person/' + tel).set({ username: tel, house: house, locked: 0 }).then(() => {
                                     return res.send({ success: true, message: 'OK' });
                                         // return res.send('OK');
                                     });
