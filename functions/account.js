@@ -5,7 +5,6 @@ var connector = require('./connector');
 
 
 var esc = require('./util').stringEscape;
-var verify = require('./util').verifyForm;
 var db = require('./connector').adminClient;
 
 
@@ -133,9 +132,13 @@ exports.register = functions.https.onRequest((req, res) => {
         var house = formData[config.houseColumn].toString();
         var lang = req.body.lang;
         var formId = config.formId[lang].toString();
+        var key = req.body.key;
+
+        if (key !== config.key)
+        return res.send({ success: false, message: 'invalid adminKey' });
         // add some more verify here (ex tel phone verify)
-        if (verify(formData) === false)
-            return res.send({success: false, message: 'please check your form data and try again'});
+        // if (verify(formData) === false)
+        //     return res.send({success: false, message: 'please check your form data and try again'});
     }
     catch (err) {
         console.log(err);
@@ -184,7 +187,7 @@ exports.register = functions.https.onRequest((req, res) => {
                             }).catch((err) => {
                                 console.log('regist error',err);
                                 return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
-                                    return res.send({success: false, message: 'DTNL error'});
+                                    return res.send({success: false, message: 'DTNL error, also try checking form again'});
                                 });
                             });
                         }
