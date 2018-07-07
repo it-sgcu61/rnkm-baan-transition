@@ -8,8 +8,8 @@ admin.initializeApp();
 exports.adminClient = admin.database();
 
 exports.setupDTNL = function () { // dtnl interface
-    return agent.get(`http://${config.dtnlADDR}/api/v1/greeting`).withCredentials().then((challenge_request) => {
-        return agent.post(`http://${config.dtnlADDR}/api/v1/login`)
+    return agent.get(`https://${config.dtnlADDR}/api/v1/greeting`).withCredentials().then((challenge_request) => {
+        return agent.post(`https://${config.dtnlADDR}/api/v1/login`)
             .send({
                 username: config.dtnlUser,
                 password: sha256(sha256(config.dtnlPassword) + challenge_request.body.challenge)
@@ -20,7 +20,7 @@ exports.setupDTNL = function () { // dtnl interface
                     console.log('Failed to connect to DTNL system.')
                     throw new Error("Failed to connect to DTNL system.");
                 } else {
-                    return agent.get(`http://${config.dtnlADDR}/api/v1/get/tableList`).withCredentials().then(tableFetch => {
+                    return agent.get(`https://${config.dtnlADDR}/api/v1/get/tableList`).withCredentials().then(tableFetch => {
                         if (tableFetch.body.tableList.includes(config.rnkmTablename)) {
                             console.log('Table configuration invalid.');
                             throw new Error("Table configuration invalid.");

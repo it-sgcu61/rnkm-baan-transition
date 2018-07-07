@@ -81,8 +81,6 @@ exports.confirmHouse = functions.https.onRequest((req, res) => {
     });
 });
 
-
-
 exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').onUpdate((snapshot, context) => {
     var username = context.params.username;
     // console.log(typeof snapshot, snapshot);
@@ -94,7 +92,7 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
                 // return res.send({ success: false, message: 'error connecting to DTNL' });
             }
             else {
-                return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`) // find _id of DTNL db first so we can update
+                return agent.post(`https://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`) // find _id of DTNL db first so we can update
                     .send({
                         sortby: "",
                         orderby: "",
@@ -104,7 +102,7 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
                     .then((data) => { // now edit data
                         var _id = data.body.body[0]["_id"];
                         return snapshot.after.ref.parent.child('house').once('value').then((house) => {
-                            return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
+                            return agent.post(`https://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
                                 .send({
                                     modify_list: `{"idList":["${_id}"],"modifyList":[{"columnName":"${config.houseColumn}","value":"\\"${esc(house.val())}\\""}]}`
                                 })

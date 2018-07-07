@@ -48,7 +48,7 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
                     return res.send({ success: false, message: 'error connecting to DTNL' });
                 }
                 else {
-                    return agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
+                    return agent.post(`https://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
                         .send({
                             sortby: "",
                             orderby: "",
