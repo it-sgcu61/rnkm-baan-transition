@@ -7,7 +7,6 @@ var connector = require('./connector');
 var esc = require('./util').stringEscape;
 var db = require('./connector').adminClient;
 
-
 exports.login = functions.https.onRequest((req, res) => {
     try {
         var username = req.body.username.toString();
@@ -22,7 +21,7 @@ exports.login = functions.https.onRequest((req, res) => {
             return res.send({ success: false, message: 'error connecting to DTNL' });
         }
         else {
-            return agent.post(`https://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
+            return agent.post(`${config.prot}://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
                 .send({
                     sortby: "",
                     orderby: "",
@@ -101,7 +100,7 @@ exports.loginOld = functions.https.onRequest((req, res) => {
                         }
                         else {
                             var d = new Date();
-                            d.setTime(d.getTime() + 4 * 60 * 60 * 1000); // 4hours 
+                            d.setTime(d.getTime() + config.tokenAge); // 4hours 
                             return db.ref('/person/' + username).update({ token: token, tokenExpire: d.getTime() }).then(() => {
                                 return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
 
@@ -177,7 +176,7 @@ exports.register = functions.https.onRequest((req, res) => {
                             });   
                         }
                         else {
-                            return agent.post(`https://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
+                            return agent.post(`${config.prot}://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
                             .send(formData)
                             .then(() => {
                                 return db.ref('/person/' + tel).set({ username: tel, house: house, locked: 0 }).then(() => {
