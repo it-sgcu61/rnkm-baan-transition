@@ -133,7 +133,7 @@ exports.register = functions.https.onRequest((req, res) => {
         var formId = config.formId[lang].toString();
         var key = req.body.key;
         var time = req.body.time; // epoch
-        if (key !== sha256(sha256(config.key) + time.toString() + 'PogChamp') && (Date.now()-parseInt(time)) <= 20000)
+        if (key !== sha256(sha256(config.key) + time.toString() + 'PogChamp') || (Date.now()-parseInt(time)) > 20000)
             return res.send({ success: false, message: 'invalid adminKey' });
         // just let the server verify 4HEad 
     }
