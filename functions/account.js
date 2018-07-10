@@ -2,7 +2,7 @@ var functions = require('firebase-functions');
 var bcrypt = require('bcrypt');
 var config = require('./config');
 var connector = require('./connector');
-
+var sha256 = require('sha256');
 
 var esc = require('./util').stringEscape;
 var db = require('./connector').adminClient;
@@ -132,8 +132,8 @@ exports.register = functions.https.onRequest((req, res) => {
         var lang = req.body.lang;
         var formId = config.formId[lang].toString();
         var key = req.body.key;
-
-        if (key !== config.key)
+        var time = req.body.time; // epoch
+        if (key !== sha256(sha256(config.key) + time.toString() + 'PogChamp') && (Date.now()-parseInt(time)) <= 20000)
             return res.send({ success: false, message: 'invalid adminKey' });
         // just let the server verify 4HEad 
     }
@@ -222,13 +222,9 @@ exports.initPerson = functions.database.ref('/person/{username}').onCreate((snap
 exports.onPersonDelete = functions.database.ref('/person/{username}/').onDelete((snapshot, context) => {
     var user = snapshot.val();
     var house = user.house;
+    console.log(user.username, house, 'deleted')
     return db.ref('/houses/' + house + '/count').transaction((count) => {
-        if (typeof count === 'number' ){
-            return count - 1;
-        }
-        else {
-            return ;
-        }
+        return count-1;
     });
 });
 
