@@ -134,10 +134,8 @@ exports.register = functions.https.onRequest((req, res) => {
         var key = req.body.key;
 
         if (key !== config.key)
-        return res.send({ success: false, message: 'invalid adminKey' });
-        // add some more verify here (ex tel phone verify)
-        // if (verify(formData) === false)
-        //     return res.send({success: false, message: 'please check your form data and try again'});
+            return res.send({ success: false, message: 'invalid adminKey' });
+        // just let the server verify 4HEad 
     }
     catch (err) {
         console.log(err);
