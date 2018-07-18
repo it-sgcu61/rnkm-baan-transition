@@ -6,17 +6,16 @@ var db = connector.adminClient;
 var esc = require('./util').stringEscape;
 
 exports.movePerson = functions.https.onRequest((req, res) => {
-    // use username (telephone number) and token (from login) to authenticate
     try {
         var newHouse = req.body.house.toString();
-        var username = req.body.username.toString();
+        var id = req.body.id.toString();
         var token = req.body.token.toString();
     } catch (error) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + username).once('value').then((snapshot) => {
+    return db.ref('/person/' + id).once('value').then((snapshot) => {
         var user = snapshot.val();
-        if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire) {
+        if (user !== null && user.id === id && token === user.token && Date.now() < user.tokenExpire) {
             if (user.locked) {
                 return res.send({ success: false, message: 'you already confirmed your house!' })
             }
@@ -43,7 +42,7 @@ exports.movePerson = functions.https.onRequest((req, res) => {
                     else if (commited === true) { // when null --> moving to non existent house
                         return db.ref('/houses/' + user.house + '/count').transaction((count) => count - 1
                             , () => {
-                                return db.ref('/person/' + username + '/house').set(newHouse)
+                                return db.ref('/person/' + id + '/house').set(newHouse)
                                     .then(() => {
                                         return res.send({ success: true, message: 'OK' });
                                     });
@@ -62,16 +61,16 @@ exports.movePerson = functions.https.onRequest((req, res) => {
 
 exports.confirmHouse = functions.https.onRequest((req, res) => {
     try {
-        var username = req.body.username.toString();
+        var id = req.body.id.toString();
         var token = req.body.token.toString();
     }
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + username).once('value').then((snapshot) => {
+    return db.ref('/person/' + id).once('value').then((snapshot) => {
         var user = snapshot.val();
-        if (user !== null && user.username === username && user.token === token && Date.now() < user.tokenExpire) {
-            return db.ref('/person/' + username + '/locked').set(1).then(() => {
+        if (user !== null && user.id === id && user.token === token && Date.now() < user.tokenExpire) {
+            return db.ref('/person/' + id + '/locked').set(1).then(() => {
                 return res.send({ success: true, message: 'OK' })
             });
         }
@@ -81,8 +80,8 @@ exports.confirmHouse = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').onUpdate((snapshot, context) => {
-    var username = context.params.username;
+exports.onHouseConfirmed = functions.database.ref('/person/{id}/locked').onUpdate((snapshot, context) => {
+    var id = context.params.id;
     // console.log(typeof snapshot, snapshot);
     if (snapshot.after.val() === 1) { // confirmed 
         return connector.setupDTNL().then(agent => {
@@ -96,7 +95,7 @@ exports.onHouseConfirmed = functions.database.ref('/person/{username}/locked').o
                     .send({
                         sortby: "",
                         orderby: "",
-                        filter: `[{"column_name":"${config.telColumn}","expression":"like","value": "^${esc(username)}$"}]`
+                        filter: `[{"column_name":"${config.idColumn}","expression":"like","value": "^${esc(id)}$"}]`
                     })
                     .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
                     .then((data) => { // now edit data

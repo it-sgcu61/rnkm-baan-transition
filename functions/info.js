@@ -6,12 +6,12 @@ var db = connector.adminClient;
 
 var esc = require('./util').stringEscape;
 
-exports.getHouses = functions.https.onRequest((req, res) => { 
+exports.getHouses = functions.https.onRequest((req, res) => {
     return db.ref('/houses').once('value').then(snapshot => {
-        return res.send({success: true, message:'OK', data:snapshot.val()});
+        return res.send({ success: true, message: 'OK', data: snapshot.val() });
     });
 });
-
+/*
 exports.getPersonInfoOld = functions.https.onRequest((req, res) => {
     try {
         var username = req.body.username.toString();
@@ -30,18 +30,19 @@ exports.getPersonInfoOld = functions.https.onRequest((req, res) => {
         }
     });
 });
+*/
 exports.getPersonInfo = functions.https.onRequest((req, res) => {
     // maybe we sent person's name/other info too?? (currently what house and whether person has confirmed his choice)
     try {
-        var username = req.body.username.toString();
+        var id = req.body.id.toString();
         var token = req.body.token.toString();
     }
     catch (err) {
-        return res.send({success: false, message: 'bad request'});
+        return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + username).once('value').then((snapshot) => {
+    return db.ref('/person/' + id).once('value').then((snapshot) => {
         var user = snapshot.val();
-        if (user !== null && username === user.username && token === user.token && Date.now() < user.tokenExpire) {
+        if (user !== null && id === user.id && token === user.token && Date.now() < user.tokenExpire) {
             return connector.setupDTNL().then((agent) => {
                 if (!agent) {
                     console.log('error connecting to DTNL');
@@ -52,19 +53,29 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
                         .send({
                             sortby: "",
                             orderby: "",
-                            filter: `[{"column_name":"${config.telColumn}","expression":"like","value": "^${esc(username)}$"}]`
+                            filter: `[{"column_name":"${config.idColumn}","expression":"like","value": "^${esc(id)}$"}]`
                         })
                         .withCredentials().catch((err) => { console.log(err); response["result"] = "error"; })
                         .then((data) => {
-                            data.body.body[0]['house'] = user.house;
-                            data.body.body[0]['is_confirmed'] = user.locked; 
-                            return res.send({success: true, message:'OK', data:data.body.body[0]});
+                            if (data && data.body.body) {
+                                if (data.body.body.length === 1) {
+                                    data.body.body[0]['house'] = user.house;
+                                    data.body.body[0]['is_confirmed'] = user.locked || 0;
+                                    return res.send({ success: true, message: 'OK', data: data.body.body[0] });
+                                }
+                                else {
+                                    return res.send({ success: false, message: 'duplicate rows' });
+                                }
+                            }
+                            else {
+                                return res.send({ success: false, message: 'wrong credentials' });
+                            }
                         });
                 }
             });
         }
         else {
-            return res.send({success: false, message: 'wrong credentials'});
+            return res.send({ success: false, message: 'wrong credentials' });
         }
     });
 });
