@@ -50,7 +50,7 @@ exports.login = functions.https.onRequest((req, res) => {
                     }
                 });
         }
-        
+
     });
 });
 
@@ -64,13 +64,13 @@ exports.logout = functions.https.onRequest((req, res) => {
     }
     return db.ref('/person/' + username).once('value').then((snapshot) => {
         var user = snapshot.val();
-        if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire){
+        if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire) {
             return snapshot.ref.child('tokenExpire').set(0).then(() => {
-                return res.send({success: true, message:'OK'});
+                return res.send({ success: true, message: 'OK' });
             })
-        }  
+        }
         else {
-            return res.send({success: false, message:'wrong credentials'});
+            return res.send({ success: false, message: 'wrong credentials' });
         }
     });
 });
@@ -122,7 +122,7 @@ exports.loginOld = functions.https.onRequest((req, res) => {
 exports.register = functions.https.onRequest((req, res) => {
     try {
         var formData = req.body.formData; // form info as JSON, send to DTNL
-        if (typeof formData !== 'object'){
+        if (typeof formData !== 'object') {
             formData = JSON.parse(formData);
         }
         console.log(formData);
@@ -133,7 +133,7 @@ exports.register = functions.https.onRequest((req, res) => {
         var formId = config.formId[lang].toString();
         var key = req.body.key;
         var time = req.body.time; // epoch
-        if (key !== sha256(sha256(config.key) + time.toString() + 'PogChamp') || (Date.now()-parseInt(time)) > 20000)
+        if (key !== config.key)
             return res.send({ success: false, message: 'invalid adminKey' });
         // just let the server verify 4HEad 
     }
@@ -142,8 +142,8 @@ exports.register = functions.https.onRequest((req, res) => {
         return res.send({ success: false, message: 'bad request' });
     }
     return db.ref('/person/' + tel).once('value').then((snapshot) => {
-        if (snapshot.val() !== null){
-            return res.send({success:false, message:'you already registered'});
+        if (snapshot.val() !== null) {
+            return res.send({ success: false, message: 'you already registered' });
         }
         else {
             return db.ref('/houses/' + house).transaction((house) => {
@@ -169,24 +169,24 @@ exports.register = functions.https.onRequest((req, res) => {
                     return connector.setupDTNL().then(agent => {
                         if (!agent) {
                             console.log('error connecting to DTNL');
-                            return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
+                            return db.ref('/houses/' + house + '/count').transaction(count => count - 1).then(() => { // revert
                                 return res.send({ success: false, message: 'error connecting to DTNL' });
-                            });   
+                            });
                         }
                         else {
                             return agent.post(`${config.prot}://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
-                            .send(formData)
-                            .then(() => {
-                                return db.ref('/person/' + tel).set({ username: tel, house: house, locked: 0 }).then(() => {
-                                    return res.send({ success: true, message: 'OK' });
+                                .send(formData)
+                                .then(() => {
+                                    return db.ref('/person/' + tel).set({ username: tel, house: house, locked: 0 }).then(() => {
+                                        return res.send({ success: true, message: 'OK' });
                                         // return res.send('OK');
                                     });
-                            }).catch((err) => {
-                                console.log('regist error',err);
-                                return db.ref('/houses/' + house + '/count').transaction(count => count-1).then(() => { // revert
-                                    return res.send({success: false, message: 'DTNL error, also try checking form again'});
+                                }).catch((err) => {
+                                    console.log('regist error', err);
+                                    return db.ref('/houses/' + house + '/count').transaction(count => count - 1).then(() => { // revert
+                                        return res.send({ success: false, message: 'DTNL error, also try checking form again' });
+                                    });
                                 });
-                            });
                         }
                     });
                 }
@@ -224,7 +224,7 @@ exports.onPersonDelete = functions.database.ref('/person/{username}/').onDelete(
     var house = user.house;
     console.log(user.username, house, 'deleted')
     return db.ref('/houses/' + house + '/count').transaction((count) => {
-        return count-1;
+        return count - 1;
     });
 });
 
