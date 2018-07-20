@@ -91,11 +91,7 @@ exports.logout = functions.https.onRequest((req, res) => {
     }
     return db.ref('/person/' + id).once('value').then((snapshot) => {
         var user = snapshot.val();
-<<<<<<< HEAD
         if (user !== null && user.id === id && token === user.token && Date.now() < user.tokenExpire) {
-=======
-        if (user !== null && user.username === username && token === user.token && Date.now() < user.tokenExpire) {
->>>>>>> 2243b1b8332fe7ef1b96f0cb6aaa499bf949965c
             return snapshot.ref.child('tokenExpire').set(0).then(() => {
                 return res.send({ success: true, message: 'OK' });
             })
@@ -163,11 +159,6 @@ exports.register = functions.https.onRequest((req, res) => {
         var lang = req.body.lang;
         var formId = config.formId[lang].toString();
         var key = req.body.key;
-<<<<<<< HEAD
-        var time = req.body.time; // epoch
-=======
-        // var time = req.body.time; // epoch
->>>>>>> 2243b1b8332fe7ef1b96f0cb6aaa499bf949965c
         if (key !== config.key)
             return res.send({ success: false, message: 'invalid adminKey' });
         // if (formData['dynamic'])
@@ -177,11 +168,7 @@ exports.register = functions.https.onRequest((req, res) => {
         console.log(err);
         return res.send({ success: false, message: 'bad request' });
     }
-<<<<<<< HEAD
     return db.ref('/person/' + id).once('value').then((snapshot) => {
-=======
-    return db.ref('/person/' + tel).once('value').then((snapshot) => {
->>>>>>> 2243b1b8332fe7ef1b96f0cb6aaa499bf949965c
         if (snapshot.val() !== null) {
             return res.send({ success: false, message: 'you already registered' });
         }
@@ -217,11 +204,7 @@ exports.register = functions.https.onRequest((req, res) => {
                             return agent.post(`${config.prot}://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
                                 .send(formData)
                                 .then(() => {
-<<<<<<< HEAD
                                     return db.ref('/person/' + id).set({ id: id, house: house, locked: 0 }).then(() => {
-=======
-                                    return db.ref('/person/' + tel).set({ username: tel, house: house, locked: 0 }).then(() => {
->>>>>>> 2243b1b8332fe7ef1b96f0cb6aaa499bf949965c
                                         return res.send({ success: true, message: 'OK' });
                                         // return res.send('OK');
                                     });
