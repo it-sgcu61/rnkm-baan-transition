@@ -158,9 +158,8 @@ exports.register = functions.https.onRequest((req, res) => {
         var house = formData[config.houseColumn].toString();
         var lang = req.body.lang;
         var formId = config.formId[lang].toString();
-        var key = req.body.key;
-        if (key !== config.key)
-            return res.send({ success: false, message: 'invalid adminKey' });
+        
+        // we don't need admin key anymore (register is public)
         // if (formData['dynamic'])
         // just let the server verify 4HEad 
     }
