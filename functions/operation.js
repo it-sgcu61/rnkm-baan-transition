@@ -118,22 +118,13 @@ exports.onHouseConfirmed2 = functions.database.ref('/person/{id}/{id2}/locked').
     var id = context.params.id + context.params.id2;
     // console.log(typeof snapshot, snapshot);
     if (snapshot.after.val() === 1) { // confirmed 
-        return connector.setupDTNL().then(agent => {
-            if (!agent) { // eror when agent == undefined (when connection err ?)
-                console.log('error connecting to DTNL', err);
-                return 0;
-                // return res.send({ success: false, message: 'error connecting to DTNL' });
-            }
-            else {
-                return db.ref(`/person/${url(id)}/house`).once('value')
-                .then(snapshot => {
-                    return snapshot.val()
-                })
-                .then( house => {
-                    return db.ref(`/rawData/${url(id)}/realHouseURL`).set(house);
-                })
-            }
-        });
+        return db.ref(`/person/${url(id)}/house`).once('value')
+        .then(snapshot => {
+            return snapshot.val()
+        })
+        .then( house => {
+            return db.ref(`/rawData/${url(id)}/realHouseURL`).set(house);
+        })
     }
     return 1;
 });
