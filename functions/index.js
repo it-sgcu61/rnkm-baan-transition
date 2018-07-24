@@ -13,20 +13,19 @@ var account = require('./account');
 exports.getHouses = info.getHouses;
 // exports.getPersonInfo = info.getPersonInfo;
 exports.getPersonInfo2 = info.getPersonInfo2;
-// exports.getPersonInfoOld = info.getPersonInfoOld;
 
 // operation related to changing person
 exports.movePerson = operation.movePerson;
 exports.confirmHouse = operation.confirmHouse;
-exports.onHouseConfirmed = operation.onHouseConfirmed;
+// exports.onHouseConfirmed = operation.onHouseConfirmed;
+exports.onHouseConfirmed2 = operation.onHouseConfirmed2;
 exports.ADMIN_lockall = operation.ADMIN_lockAll;
 
 
 // operations related to accounts
-// exports.login = account.login;
+// exports.login = account.login; 
 exports.login2 = account.login2;
 exports.logout = account.logout;
 exports.register = account.register;
 
 // exports.onPersonDelete = account.onPersonDelete;
-exports.onPersonDelete2 = account.onPersonDelete2;
