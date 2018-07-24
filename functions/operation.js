@@ -113,6 +113,29 @@ exports.onHouseConfirmed = functions.database.ref('/person/{id}/locked').onUpdat
     }
     return 1;
 });
+exports.onHouseConfirmed2 = functions.database.ref('/person/{id}/locked').onUpdate((snapshot, context) => {
+    var id = context.params.id;
+    // console.log(typeof snapshot, snapshot);
+    if (snapshot.after.val() === 1) { // confirmed 
+        return connector.setupDTNL().then(agent => {
+            if (!agent) { // eror when agent == undefined (when connection err ?)
+                console.log('error connecting to DTNL', err);
+                return 0;
+                // return res.send({ success: false, message: 'error connecting to DTNL' });
+            }
+            else {
+                return db.ref(`/person/${id}/house`).once('value')
+                .then(snapshot => {
+                    return snapshot.val()
+                })
+                .then( house => {
+                    return db.ref(`/rawData/${id}/realHouseURL`).set(house);
+                })
+            }
+        });
+    }
+    return 1;
+});
 
 exports.ADMIN_lockAll = functions.https.onRequest((req, res) => { // to lockall person and submit data to DTNL, 
     try {

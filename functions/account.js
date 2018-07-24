@@ -102,7 +102,7 @@ exports.logout = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.loginOld = functions.https.onRequest((req, res) => {
+exports.login2 = functions.https.onRequest((req, res) => {
     try {
         var tel = req.body.tel.toString();
         var id = req.body.id.toString();
@@ -110,33 +110,45 @@ exports.loginOld = functions.https.onRequest((req, res) => {
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/rawData/${id}`).once('value').then((snapshot) => {
         var user = snapshot.val();
-        if (user !== null && id === user.id) {
-            return bcrypt.compare(password, user.password, (err, same) => {
+        if (user !== null && id === user.nationalID && user.tel === tel ) {
+            return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
                 if (err) {
-                    console.log('error logging in', err);
-                    return res.send({ success: false, message: 'error hashing password' });
-                }
-                else if (same) {
-                    return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
-                        // send token
-                        if (err) {
-                            console.log('token generation err', err);
-                            return res.send({ success: false, message: 'error generating token' });
-                        }
-                        else {
-                            var d = new Date();
-                            d.setTime(d.getTime() + config.tokenAge); // 4hours 
-                            return db.ref('/person/' + id).update({ token: token, tokenExpire: d.getTime() }).then(() => {
-                                return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
-
-                            });
-                        }
-                    });
+                    console.log('token generation err', err);
+                    return res.send({ success: false, message: 'error' });
                 }
                 else {
-                    return res.send({ success: false, message: 'wrong username/password' });
+                    var d = new Date();
+                    d.setTime(d.getTime() + config.tokenAge); // 4hours 
+                    return db.ref('/person/' + id).once('value')
+                        .then((snapshot) => {
+                            var user = snapshot.val();
+                            if (user !== null) {
+                                return db.ref('/person/' + id).update({ token: token, tokenExpire: d.getTime() }).then(() => {
+                                    return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
+                                });
+                            }
+                            else { // DEBUG? remove this later
+
+                                // DEBUG
+                                house = data.body.body[0]['final-house'] || data.body.body[0]['head/house1'];
+                                return db.ref('/person/' + id).set({
+                                    token: token, tokenExpire: d.getTime(),
+                                    id: id, house: house, locked: 0
+                                })
+                                    .then(() => {
+                                        return db.ref('/houses/' + house + '/count').transaction(count => {
+                                            return count + 1;
+                                        })
+                                            .then(() => {
+                                                return res.send({ success: true, message: 'warning user initially not in Firebase', token: token, expire: d.toUTCString() });
+                                            })
+                                    })
+                            }
+
+
+                        });
                 }
             });
         }

@@ -79,3 +79,30 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
         }
     });
 });
+
+exports.getPersonInfo2 = functions.https.onRequest((req, res) => {
+    try {
+        var id = req.body.id.toString();
+        var token = req.body.token.toString();
+    }
+    catch (err) {
+        return res.send({ success: false, message: 'bad request' });
+    }
+    return db.ref('/person/' + id).once('value').then((snapshot) => {
+        var user = snapshot.val();
+        if (user !== null && id === user.id && token === user.token && Date.now() < user.tokenExpire) {
+            return db.ref(`/rawData/${id}`).once('value')
+                .then(snapshot => {
+                    var data = snapshot.val();
+                    data.house = user.house;
+                    data.is_confirmed = user.locked;
+
+                    data.groupID = '<deleted>';
+                    return res.send(data);
+                });
+        }
+        else {
+            return res.send({ success: false, message: 'wrong credentials' });
+        }
+    });
+})
