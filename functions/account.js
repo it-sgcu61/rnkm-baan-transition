@@ -114,7 +114,7 @@ exports.login2 = functions.https.onRequest((req, res) => {
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref(`/rawData/${id}`).once('value').then((snapshot) => {
+    return db.ref(`/rawData/${url(id)}`).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && id === user.nationalID && user.tel === tel ) {
             return bcrypt.hash(Date.now().toString(16), 8, (err, token) => {
