@@ -244,37 +244,3 @@ exports.onPersonDelete = functions.database.ref('/person/{id}/').onDelete((snaps
         return count - 1;
     });
 });
-/*
-exports.ADMIN_resetPassword = functions.https.onRequest((req, res) => {
-    try {
-        var username = req.body.username.toString();
-        var newPassword = req.body.password.toString();
-        var key = req.body.key.toString();
-    }
-    catch (err) {
-        return res.send({ success: false, message: 'bad request' });
-    }
-    if (key !== config.key) { // to prevent accidental use
-        return res.send({ success: false, message: 'invalid key' });
-    }
-    return db.ref('/person/' + username).once('value').then((snapshot) => {
-        var user = snapshot.val();
-        if (user !== null) {
-            return bcrypt.hash(newPassword, 8, (err, hash) => {
-                if (err) {
-                    console.log('password reset failed', err);
-                    return res.send({ success: false, message: 'error hashing password' });
-                }
-                else {
-                    return db.ref('/person/' + username).update({ hash: true, password: hash, token: 0, tokenExpire: 0 }).then(() => {
-                        return res.send({ success: true, message: 'OK' });
-                    })
-                }
-            });
-        }
-        else {
-            return res.send({ success: false, message: 'user doesn\'t exist' });
-        }
-    });
-});
-*/
