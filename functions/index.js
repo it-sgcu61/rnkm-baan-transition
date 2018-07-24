@@ -11,7 +11,7 @@ var account = require('./account');
 
 
 exports.getHouses = info.getHouses;
-exports.getPersonInfo = info.getPersonInfo;
+// exports.getPersonInfo = info.getPersonInfo;
 exports.getPersonInfo2 = info.getPersonInfo2;
 // exports.getPersonInfoOld = info.getPersonInfoOld;
 
@@ -23,7 +23,7 @@ exports.ADMIN_lockall = operation.ADMIN_lockAll;
 
 
 // operations related to accounts
-exports.login = account.login;
+// exports.login = account.login;
 exports.login2 = account.login2;
 exports.logout = account.logout;
 exports.register = account.register;

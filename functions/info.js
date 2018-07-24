@@ -5,6 +5,7 @@ var config = require('./config');
 var db = connector.adminClient;
 
 var esc = require('./util').stringEscape;
+var url = require('./util').makeUrl;
 
 exports.getHouses = functions.https.onRequest((req, res) => {
     return db.ref('/houses').once('value').then(snapshot => {
@@ -40,7 +41,7 @@ exports.getPersonInfo = functions.https.onRequest((req, res) => {
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/person/${url(id)}`).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && id === user.id && token === user.token && Date.now() < user.tokenExpire) {
             return connector.setupDTNL().then((agent) => {
@@ -88,16 +89,16 @@ exports.getPersonInfo2 = functions.https.onRequest((req, res) => {
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/person/${url(id)}`).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && id === user.id && token === user.token && Date.now() < user.tokenExpire) {
-            return db.ref(`/rawData/${id}`).once('value')
+            return db.ref(`/rawData/${url(id)}`).once('value')
                 .then(snapshot => {
                     var data = snapshot.val();
                     data.house = user.house;
                     data.is_confirmed = user.locked;
 
-                    data.groupID = '<deleted>';
+                    data.groupID = '<deleted>'
                     return res.send(data);
                 });
         }

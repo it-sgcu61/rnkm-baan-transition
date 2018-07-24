@@ -6,11 +6,15 @@ var sha256 = require('sha256');
 
 var esc = require('./util').stringEscape;
 var db = require('./connector').adminClient;
+var url = require('./util').makeUrl;
+
+
 
 exports.login = functions.https.onRequest((req, res) => {
     try {
         var tel = req.body.tel.toString();
         var id = req.body.id.toString();
+        
     }
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
@@ -41,11 +45,11 @@ exports.login = functions.https.onRequest((req, res) => {
                             else {
                                 var d = new Date();
                                 d.setTime(d.getTime() + config.tokenAge); // 4hours 
-                                return db.ref('/person/' + id).once('value')
+                                return db.ref(`/person/${url(id)}`).once('value')
                                     .then((snapshot) => {
                                         var user = snapshot.val();
                                         if (user !== null) {
-                                            return db.ref('/person/' + id).update({ token: token, tokenExpire: d.getTime() }).then(() => {
+                                            return db.ref(`/person/${url(id)}`).update({ token: token, tokenExpire: d.getTime() }).then(() => {
                                                 return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
                                             });
                                         }
@@ -53,12 +57,12 @@ exports.login = functions.https.onRequest((req, res) => {
 
                                             // DEBUG
                                             house = data.body.body[0]['final-house'] || data.body.body[0]['head/house1'];
-                                            return db.ref('/person/' + id).set({
+                                            return db.ref(`/person/${url(id)}`).set({
                                                 token: token, tokenExpire: d.getTime(),
                                                 id: id, house: house, locked: 0
                                             })
                                                 .then(() => {
-                                                    return db.ref('/houses/' + house + '/count').transaction(count => {
+                                                    return db.ref(`/houses/${house}/count`).transaction(count => {
                                                         return count + 1;
                                                     })
                                                         .then(() => {
@@ -89,7 +93,7 @@ exports.logout = functions.https.onRequest((req, res) => {
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/person/${url(id)}`).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && user.id === id && token === user.token && Date.now() < user.tokenExpire) {
             return snapshot.ref.child('tokenExpire').set(0).then(() => {
@@ -121,11 +125,11 @@ exports.login2 = functions.https.onRequest((req, res) => {
                 else {
                     var d = new Date();
                     d.setTime(d.getTime() + config.tokenAge); // 4hours 
-                    return db.ref('/person/' + id).once('value')
+                    return db.ref(`/person/${url(id)}`).once('value')
                         .then((snapshot) => {
                             var user = snapshot.val();
                             if (user !== null) {
-                                return db.ref('/person/' + id).update({ token: token, tokenExpire: d.getTime() }).then(() => {
+                                return db.ref(`/person/${url(id)}`).update({ token: token, tokenExpire: d.getTime() }).then(() => {
                                     return res.send({ success: true, message: 'OK', token: token, expire: d.toUTCString() });
                                 });
                             }
@@ -133,12 +137,12 @@ exports.login2 = functions.https.onRequest((req, res) => {
 
                                 // DEBUG
                                 house = data.body.body[0]['final-house'] || data.body.body[0]['head/house1'];
-                                return db.ref('/person/' + id).set({
+                                return db.ref(`/person/${url(id)}`).set({
                                     token: token, tokenExpire: d.getTime(),
                                     id: id, house: house, locked: 0
                                 })
                                     .then(() => {
-                                        return db.ref('/houses/' + house + '/count').transaction(count => {
+                                        return db.ref(`/houses/${house}/count`).transaction(count => {
                                             return count + 1;
                                         })
                                             .then(() => {
@@ -179,12 +183,12 @@ exports.register = functions.https.onRequest((req, res) => {
         console.log(err);
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/person/${url(id)}`).once('value').then((snapshot) => {
         if (snapshot.val() !== null) {
             return res.send({ success: false, message: 'you already registered' });
         }
         else {
-            return db.ref('/houses/' + house).transaction((house) => {
+            return db.ref(`/houses/${house}`).transaction((house) => {
                 if (house === null) {
                     return null;
                 }
@@ -207,7 +211,7 @@ exports.register = functions.https.onRequest((req, res) => {
                     return connector.setupDTNL().then(agent => {
                         if (!agent) {
                             console.log('error connecting to DTNL');
-                            return db.ref('/houses/' + house + '/count').transaction(count => count - 1).then(() => { // revert
+                            return db.ref(`/houses/${house}/count`).transaction(count => count - 1).then(() => { // revert
                                 return res.send({ success: false, message: 'error connecting to DTNL' });
                             });
                         }
@@ -215,13 +219,13 @@ exports.register = functions.https.onRequest((req, res) => {
                             return agent.post(`${config.prot}://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
                                 .send(formData)
                                 .then(() => {
-                                    return db.ref('/person/' + id).set({ id: id, house: house, locked: 0 }).then(() => {
+                                    return db.ref(`/person/${url(id)}`).set({ id: id, house: house, locked: 0 }).then(() => {
                                         return res.send({ success: true, message: 'OK' });
                                         // return res.send('OK');
                                     });
                                 }).catch((err) => {
                                     console.log('regist error', err);
-                                    return db.ref('/houses/' + house + '/count').transaction(count => count - 1).then(() => { // revert
+                                    return db.ref(`/houses/${house}/count`).transaction(count => count - 1).then(() => { // revert
                                         return res.send({ success: false, message: 'DTNL error, also try checking form again' });
                                     });
                                 });
@@ -240,7 +244,7 @@ exports.onPersonDelete = functions.database.ref('/person/{id}/').onDelete((snaps
     var user = snapshot.val();
     var house = user.house;
     console.log(user.id, house, 'deleted')
-    return db.ref('/houses/' + house + '/count').transaction((count) => {
+    return db.ref(`/houses/${house}/count`).transaction((count) => {
         return count - 1;
     });
 });

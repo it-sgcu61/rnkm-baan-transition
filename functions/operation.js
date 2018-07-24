@@ -4,6 +4,7 @@ var config = require('./config');
 var connector = require('./connector');
 var db = connector.adminClient;
 var esc = require('./util').stringEscape;
+var url = require('./util').makeUrl;
 
 exports.movePerson = functions.https.onRequest((req, res) => {
     try {
@@ -13,14 +14,14 @@ exports.movePerson = functions.https.onRequest((req, res) => {
     } catch (error) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/person/${url(id)}`).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && user.id === id && token === user.token && Date.now() < user.tokenExpire) {
             if (user.locked) {
                 return res.send({ success: false, message: 'you already confirmed your house!' })
             }
             else {
-                return db.ref('/houses/' + newHouse).transaction((house) => {
+                return db.ref(`/houses/${newHouse}`).transaction((house) => {
                     if (house === null) {
                         return null;
                     }
@@ -40,9 +41,9 @@ exports.movePerson = functions.https.onRequest((req, res) => {
                         return res.send({ success: false, message: 'invalid house' });
                     }
                     else if (commited === true) { // when null --> moving to non existent house
-                        return db.ref('/houses/' + user.house + '/count').transaction((count) => count - 1
+                        return db.ref(`/houses/${user.house}/count`).transaction((count) => count - 1
                             , () => {
-                                return db.ref('/person/' + id + '/house').set(newHouse)
+                                return db.ref(`/person/${url(id)}/house`).set(newHouse)
                                     .then(() => {
                                         return res.send({ success: true, message: 'OK' });
                                     });
@@ -67,10 +68,10 @@ exports.confirmHouse = functions.https.onRequest((req, res) => {
     catch (err) {
         return res.send({ success: false, message: 'bad request' });
     }
-    return db.ref('/person/' + id).once('value').then((snapshot) => {
+    return db.ref(`/person/${url(id)}`).once('value').then((snapshot) => {
         var user = snapshot.val();
         if (user !== null && user.id === id && user.token === token && Date.now() < user.tokenExpire) {
-            return db.ref('/person/' + id + '/locked').set(1).then(() => {
+            return db.ref(`/person/${url(id)}/locked`).set(1).then(() => {
                 return res.send({ success: true, message: 'OK' })
             });
         }
@@ -80,8 +81,8 @@ exports.confirmHouse = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.onHouseConfirmed = functions.database.ref('/person/{id}/locked').onUpdate((snapshot, context) => {
-    var id = context.params.id;
+exports.onHouseConfirmed = functions.database.ref('/person/{id}/{id2}/locked').onUpdate((snapshot, context) => {
+    var id = context.params.id + context.params.id2;
     // console.log(typeof snapshot, snapshot);
     if (snapshot.after.val() === 1) { // confirmed 
         return connector.setupDTNL().then(agent => {
@@ -113,8 +114,8 @@ exports.onHouseConfirmed = functions.database.ref('/person/{id}/locked').onUpdat
     }
     return 1;
 });
-exports.onHouseConfirmed2 = functions.database.ref('/person/{id}/locked').onUpdate((snapshot, context) => {
-    var id = context.params.id;
+exports.onHouseConfirmed2 = functions.database.ref('/person/{id}/{id2}/locked').onUpdate((snapshot, context) => {
+    var id = context.params.id + context.params.id2;
     // console.log(typeof snapshot, snapshot);
     if (snapshot.after.val() === 1) { // confirmed 
         return connector.setupDTNL().then(agent => {
@@ -124,12 +125,12 @@ exports.onHouseConfirmed2 = functions.database.ref('/person/{id}/locked').onUpda
                 // return res.send({ success: false, message: 'error connecting to DTNL' });
             }
             else {
-                return db.ref(`/person/${id}/house`).once('value')
+                return db.ref(`/person/${url(id)}/house`).once('value')
                 .then(snapshot => {
                     return snapshot.val()
                 })
                 .then( house => {
-                    return db.ref(`/rawData/${id}/realHouseURL`).set(house);
+                    return db.ref(`/rawData/${url(id)}/realHouseURL`).set(house);
                 })
             }
         });
