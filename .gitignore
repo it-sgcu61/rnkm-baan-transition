@@ -1,2 +1,6 @@
 **/node_modules
 **/config.js
+./server.key
+./server.crt
+./bundle.crt
+*firebase*
