@@ -8,8 +8,7 @@ var path = require('path');
 var sha256 = require('sha256')
 var cors = require('cors')
 var request = require('superagent');
-
-var mongoose = require('mongoose');
+var admin = require('firebase-admin');
 
 
 var app = express();
@@ -17,31 +16,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'twig');
 
 const agent = request.agent();
-
-
-
-var houseSchema = mongoose.Schema({
-  name: String,
-  cap: Number,
-  count: Number
-});
-var personSchema = mongoose.Schema({
-  id: String,
-  tel: String,
-  token: String,
-  tokenExpire: Number,
-  locked: Number,
-  house: String
-});
-var tokenSchema = mongoose.Schema({
-  id: String,
-  tel: String,
-  token: String,
-  tokenExpire: Number
-});
-mongoose.model('Token', tokenSchema, 'token');
-mongoose.model('Person', personSchema, 'person');
-mongoose.model('House', houseSchema, 'house');
 
 var options = {
   ca: fs.readFileSync('./bundle.crt'),
@@ -51,7 +25,12 @@ var options = {
 var config = require('./config')
 const personRouter = require('./routes/person');
 const infoRouter = require('./routes/info');
-
+var firebaseKey = require('./firebaseKey.json');
+admin.initializeApp({
+  credential: admin.credential.cert(firebaseKey),
+  databaseURL: 'https://rnkm-cu102.firebaseio.com'
+});
+var db = admin.database();
 function onError(error) {
   if (error.syscall !== 'listen') {
     throw error;
@@ -123,12 +102,12 @@ setupDTNL().then((agent) => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
-  app.use('/', personRouter(agent));
-  app.use('/', infoRouter(agent));
+  app.use('/', personRouter(agent, db));
+  app.use('/', infoRouter(agent, db));
 
   app.use(function (req, res, next) {
     next(createError(404));
-  });
+  }); 
   // error handler
   // app.use(function (err, req, res, next) {
   //   // set locals, only providing error in development
