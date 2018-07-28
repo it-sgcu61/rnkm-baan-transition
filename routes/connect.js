@@ -25,7 +25,7 @@ queryDTNL = async function (agent, reqs) {
 
     for (var i = 0; i < reqs.length; i++) {
         var { cb, data } = reqs[i];
-        cb(dtnlData.body.body.filter(x => x[config.telColumn] === data.tel))
+        cb(dtnlData.body.body ? dtnlData.body.body.filter(x => x[config.telColumn] === data.tel) : [])
     }
 }
 query = async function (agent, data, cb) {
@@ -46,7 +46,11 @@ query = async function (agent, data, cb) {
         lock = 0;
     }
 }
+modify = async function (agent, ids, changes) {
+    agent.post('')
 
+
+}
 module.exports = {
     query: query,
     queryDTNL: queryDTNL
