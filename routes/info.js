@@ -13,7 +13,7 @@ var query = require('./connect').query; // query to DTNL (batched reponse)
 var mongoose = require('mongoose');
 
 
-module.exports = function (agent) {
+module.exports = function (agent, db) {
     var router = express.Router();
     
     // router.get('/getHouses', async function(req, res, next) => {
