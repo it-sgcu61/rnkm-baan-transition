@@ -1,3 +1,5 @@
+# under rewriting code !!
+
 # rnkm-baan-transition
 Baan transition system with NodeJS x Firebase x DatanaliEZ
 
