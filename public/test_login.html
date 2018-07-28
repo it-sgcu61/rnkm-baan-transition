@@ -1,0 +1,84 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>test</title>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+    <script src="./js/data.js"></script>
+ 
+</head>
+
+<body>
+    <button onclick="login()">addMe</button>
+    <ul id="msg">
+
+    </ul>
+    <script>
+        randInt = function (max) { return Math.floor(Math.random() * Math.floor(max)) };
+
+        var projectName = 'rnkm-cu102';
+        var proxy = 'https://cryptic-headland-94862.herokuapp.com/';
+        var url = proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/';
+        // data = imported
+
+
+        console.log(data);
+        std = data['rawData'];
+        console.log(std, typeof std);
+        keys = Object.keys(std);
+        n = keys.length;
+        
+        eachLogin = function() {
+            let st = Date.now();
+            let k1 = keys[randInt(n)]; // key1
+            
+            let std2 = std[k1];
+            let subkeys = Object.keys(std2);
+            let m = subkeys.length;
+
+            let k2 = subkeys[randInt(m)]; // idx2
+            
+            console.log(k1+k2);
+            let id = std[k1][k2]['nationalID'];
+            let tel = std[k1][k2]['tel'];
+
+            $.ajax({
+                url: url + 'login2',
+                method: 'POST',
+                data: {
+                    id: id, 
+                    tel: tel
+                },
+                success: function (data){
+                    // console.log(data)
+                    let token = data.token;
+                    console.log(token, id);
+                    $.ajax({
+                        url: url + 'getPersonInfo2',    
+                        method: 'POST',
+                        data: {
+                            id: id, 
+                            token: token
+                        },
+                        success: function (){
+                            $('#msg').append(`<li>id:${k1+k2}, st=${st},time=${Date.now()-st}</li>`);
+                        }
+                    })
+                    // $('#msg').append(`<li>id:${k1+k2}, start:${st}, end:${Date.now()}, diff=${Date.now()-st}</li>`);
+                }
+            });
+
+        }
+        login = function() {
+            // for (var i=0; i<5; i++){
+                eachLogin();
+            
+        }
+
+   </script>
+</body>
+
+</html>

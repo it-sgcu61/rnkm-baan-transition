@@ -1,5 +1,4 @@
 **/node_modules
 ./firebase-debug.log
-./public
 **/config.js
 firebase-debug.log

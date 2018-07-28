@@ -1,0 +1,119 @@
+<htm>
+
+    <head>
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+        <title> LOGIN </title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/css/materialize.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/js/materialize.min.js"></script>
+
+        <script type="text/javascript">
+            function getCookie(w) {
+                cName = "";
+                pCOOKIES = new Array();
+                pCOOKIES = document.cookie.split('; ');
+                for (bb = 0; bb < pCOOKIES.length; bb++) {
+                    NmeVal = new Array();
+                    NmeVal = pCOOKIES[bb].split('=');
+                    if (NmeVal[0] == w) {
+                        cName = unescape(NmeVal[1]);
+                    }
+                }
+                return cName;
+            }
+            function setCookie(name, value, expires, path) {
+                cookieStr = name + "=" + value + "; ";
+
+                if (expires) {
+                    expires = setExpiration(expires);
+                    cookieStr += "expires=" + expires + "; ";
+                }
+                if (path) {
+                    cookieStr += "path=" + path + "; ";
+                }
+                if (secure) {
+                    cookieStr += "secure; ";
+                }
+
+                document.cookie = cookieStr;
+            }
+        </script>
+        <style>
+            body {
+                background: black;
+            }
+
+            label,
+            h2,
+            input {
+                color: white;
+            }
+        </style>
+
+
+    </head>
+
+    <body>
+        <div class="container">
+
+            <div>
+                <h2>Please login </h2>
+                <label>username </label>
+                <input id="username">
+                <label>password: </label>
+                <input id="password" type="password">
+                <button class="btn waves-light waves-effect" id="submit">Login</button>
+                <br>
+                <label style="color:red" id="errorMessage"></label>
+                <br>
+                <label style="color:lightgrey" id="noticeMessage"></label>
+                <br>
+
+            </div>
+            <script>
+                $(document).ready(function () {
+                    var projectName = 'rnkm-cu102';
+
+                    var proxy = 'https://cryptic-headland-94862.herokuapp.com/';
+                    var token = getCookie('token');
+                    var user = getCookie('username');
+                    if (token && user)
+                        window.location.href = ('home.html');
+
+                    $('#submit').on('click', () => {
+                        var username = $('#username').val();
+                        var password = $('#password').val();
+                        $('#noticeMessage').html('logging in');
+                        $.ajax({
+                            url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/login2',
+                            method: 'POST',
+                            data: {
+                                tel: username,
+                                id: password
+                            },
+                            success: function (data) {
+                                $('#noticeMessage').html('');
+                                if (typeof data !== 'object')
+                                    data = JSON.parse(data);
+
+                                // console.log(data);
+                                if (!data.success) {
+                                    $('#errorMessage').html(data.message);
+                                }
+                                else {
+                                    // alert(data.token)
+                                    document.cookie = `token=${escape(data.token)}; expires:${data.expire} ;path=/`;
+                                    document.cookie = `username=${password}; expires:${data.expire}; path=/`;
+                                    window.location.href = ('home.html')
+                                }
+                            },
+                        });
+
+                    });
+
+                });
+            </script>
+        </div>
+    </body>
+
+</htm>

@@ -1,0 +1,87 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>test</title>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+
+
+</head>
+
+<body>
+    <button onclick="regist()">addMe</button>
+    <ul id="msg">
+
+    </ul>
+    <script>
+        randInt = function (max) { return Math.floor(Math.random() * Math.floor(max)) };
+
+
+        var proxy = 'https://cryptic-headland-94862.herokuapp.com/';
+        var houses = ["บ้านคิดส์ - Kids", "บ้านคุณหนู - Khunnoo", "บ้านคุ้ม - KOOM", "บ้านโคะ - KOH", "บ้านจัดสัน - Jadson", "บ้านโจ๋ - Jo+", "บ้านโจ๊ะเด๊ะ ฮือซา - Jodeh Huesa", "บ้านโซ้ยตี๋หลีหมวย - SoeiteeLheemouy", "บ้านดอก - Dork", "บ้านดัง - Dung", "บ้านดุ๊ยดุ่ย - Duidui", "บ้านเต็ม - TEM", "บ้านบึ้ม - Buem", "บ้านบูชายัญ - Buchayun", "บ้านเปรี้ยว - Preaw", "บ้านผี - Phee", "บ้านพ่อ - Por", "บ้านพักตากอากาศ - Pak Tak Agard", "บ้านเฟี้ยว - Fyo", "บ้านยิ้ม - Yim", "บ้านแรง - Rang", "บ้านว้อนท์ - Wanted", "บ้านเวิร์ค - Work", "บ้านสด - Sod", "บ้านเสี่ยว - Seiyw", "บ้านหมีน้อย - Mheenoi", "บ้านหรอย - Rhoy", "บ้านหลายใจ - LaiJai", "บ้านหวัง - Wang", "บ้านไหน - Nhai", "บ้านอะอึ๋ม - A-AUM", "บ้านอากาเป้ - AGAPE", "บ้านอินดี้ - Indy", "บ้านอินเดียน่า - INDIANA", "บ้านเอช้วน - Achuan", "บ้านแอ๊บ - ABnormal"];
+        var fac = ["ครุศาสตร์ - Faculty of Education", "จิตวิทยา - Faculty of Psychology", "ทันตแพทยศาสตร์ - Faculty of Dentistry", "นิติศาสตร์ - Faculty of Law", "นิเทศศาสตร์ - Faculty of Communication Arts", "พยาบาลศาสตร์ - Faculty of Nursing", "พาณิชยศาสตร์และการบัญชี - Faculty of Commerce and Accountancy", "แพทยศาสตร์ - Faculty of Medicine", "เภสัชศาสตร์ - Faculty of Pharmaceutical Sciences", "รัฐศาสตร์ - Faculty of Political Science", "วิทยาศาสตร์ - Faculty of Science", "วิทยาศาสตร์การกีฬา - Faculty of Sports Science", "วิศวกรรมศาสตร์ - Faculty of Engineering", "ศิลปกรรมศาสตร์ - Faculty of Fine and Applied Arts", "เศรษฐศาสตร์ - Faculty of Economics", "สถาปัตยกรรมศาสตร์ - Faculty of Architecture", "สหเวชศาสตร์ - Faculty of Allied Health Sciences", "สัตวแพทยศาสตร์ - Faculty of Veterinary Science", "อักษรศาสตร์ - Faculty of Arts", "สำนักวิชาทรัพยากรการเกษตร - School of Agricultural Resources"]
+        var n1 = houses.length, n2 = fac.length;
+        var reqn = 0;
+
+        // change here
+        var startNum = 210; // starting ID
+        //
+
+
+        regist = function () {
+            reqn += 1;
+            let tr = reqn;
+            $('#msg').append(`<li>${tr}adding...</li>`);
+            h1 = randInt(n1); h2 = randInt(n1); h3 = randInt(n1);
+            c1 = randInt(n2);
+            while (h2 === h1) h2 = randInt(n1);
+            while (h3 === h1 || h3 === h2) h3 = randInt(n1);
+            idl = startNum + tr;
+            phl = startNum + tr;
+            data = {
+                "head/house1": houses[h1],
+                "head/house2": houses[h2],
+                "head/house3": houses[h3],
+                "dynamic/nameprefix": "นาย - Mr.",
+                "dynamic/fullname": "หกฟ ๆไพพๆ",
+                "dynamic/nickname": "ๆำๆ ำๆไำๆไ",
+                "dynamic/faculty": fac[c1],
+                "dynamic/nationalID_URL": `1200100123${idl}`,
+                "dynamic/religion": "-",
+                "dynamic/tel": `089-123-4${phl}`,
+                "dynamic/lineID": "rod",
+                "dynamic/facebook": "d412",
+                "dynamic/emergency_tel": "089-321-6457",
+                "dynamic/emergency_tel_relation": "บิดา",
+                "dynamic/RCU_required": "yes",
+                "dynamic/congenital_disease": "-",
+                "dynamic/regularDrug": "-",
+                "dynamic/drugAllergy": "-",
+                "dynamic/disorders": "-",
+                "dynamic/foodAllergies": "-",
+                "hidden/groupID": "1674887",
+                "hidden/imageURL": "www.google.com",
+                "final-house": houses[h1]
+            }
+            console.log(data);
+            $.ajax({
+                url: proxy + 'https://us-central1-rnkm2018-house-ad25ge.cloudfunctions.net/register',
+                method: 'POST',
+                data: { formData: JSON.stringify(data), key: '$2b$10$kuaHw4bVqFboBi4.OE7u.epYivqqR154fwr5OfWmn6Q8kV/oTOS', lang: 'TH' },
+                success: function (res) {
+                    $('#msg').append(`<li>${tr}resp: ${res.message}</li>`);
+                },
+                error: function (err) {
+                    $('#msg').append(`<li>${tr}failed.</li>`);
+                }
+            });
+
+
+        }
+    </script>
+</body>
+
+</html>

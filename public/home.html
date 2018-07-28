@@ -1,0 +1,354 @@
+<htm>
+
+    <head>
+
+        <script src="https://www.gstatic.com/firebasejs/5.1.0/firebase.js"></script>
+
+
+
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+            crossorigin="anonymous"></script>
+        <title> CHANGE 4House </title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/css/materialize.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-rc.2/js/materialize.min.js"></script>
+        <script type="text/javascript"> 
+            // some functions
+            function getCookie(w) {
+                cName = "";
+                pCOOKIES = new Array();
+                pCOOKIES = document.cookie.split('; ');
+                for (bb = 0; bb < pCOOKIES.length; bb++) {
+                    NmeVal = new Array();
+                    NmeVal = pCOOKIES[bb].split('=');
+                    if (NmeVal[0] == w) {
+                        cName = unescape(NmeVal[1]);
+                    }
+                }
+                return cName;
+            }
+            function removeSpace(str) {
+                return str.replace(/\s/g, '_');
+            }
+            function formatString(str) {
+                if (!str) return "";
+                if (str.length < 100) return str;
+                return str.slice(0, 100) + "...";
+            }
+        </script>
+        <style>
+            div {
+                color: white;
+                padding: 4px !important;
+            }
+
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                color: white !important;
+                padding: 8px !important;
+                margin: 0px !important;
+            }
+
+            body {
+                background: black;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="grey darken-2">
+            <b class="orange-text darken-4" style="font-size: 1.25em"> Welcome: </b>
+            <label id="fullname" style="color: #fff176; font-size: 1.5em"> loading... </label>
+            <br>
+            <b class="orange-text darken-4" style="font-size: 1.25em"> Your House: </b>
+            <label id="house" style="color: #fff176; font-size: 1.5em"> loading... </label>
+            <br>
+            <b class="orange-text darken-4" style="font-size: 1.5em !important"> System Status: </b>
+            <label id="msg" style="color: #fff176; font-size: 1.5em"> </label>
+            <br>
+            <b class="orange-text darken-4" style="font-size: 1.25em"> Debug: </b>
+            <label id="rawdata" style="color: #fff176; font-size: 0.8em"> loading... </label>
+
+        </div>
+        <h4 id="house_title">Change Houses:</h4>
+        <div class="row" id="box">
+
+        </div>
+        <h4>actions</h4>
+        <div id="actions">
+            <button id="logout" class="btn waves-effect waves-light">LOGOUT</button>
+            <button id="confirm" class="btn waves-effect waves-light">CONFIRM</button>
+            <button id="refresh" class="btn waves-effect waves-light">REFRESH</button>
+        </div>
+
+
+        <script>
+
+            var projectName = 'rnkm-cu102';
+            var key = 'AIzaSyDQLSoNkP8FbxlbbkgCBafxCpR567XFCko';
+            var config = {
+                apiKey: key,
+                authDomain: projectName + ".firebaseapp.com",
+                databaseURL: "https://" + projectName + ".firebaseio.com",
+                storageBucket: projectName + ".appspot.com"
+            };
+            firebase.initializeApp(config);
+            var db = firebase.database();
+            // listen update
+            db.ref('/houses/').on('child_changed', (snapshot) => {
+                // return just the house updated
+                console.log('baan', snapshot.key, 'updated to', snapshot.val());
+                // update the house counts
+                var house = snapshot.val();
+                $(`#${removeSpace(snapshot.key)} .count`).html(`${house.count}/${house.cap}`);
+            });
+
+
+
+        </script>
+        <!-- normal scripts-->
+        <script>
+            var proxy = 'https://cryptic-headland-94862.herokuapp.com/';
+            var token = getCookie('token');
+            var user = getCookie('username');
+            var box = $('#box');
+            var userdata;
+            $(document).ready(function () {
+                console.log(token, user);
+                if (!token || !user) {
+                    // window.location.href = ('login.html');
+                }
+                loadUserData();
+                $('#logout').on('click', logout);
+                $('#refresh').on('click', updateHouseCount);
+                $('#confirm').on('click', lockHouse);
+                //load intial houses data
+                // loadHouses();
+
+
+                // read once (equivalent to) /getHouses but faster
+                db.ref('/houses/').once('value', (snapshot) => {
+                    // return all houses;
+                    console.log('houses updated!', snapshot.val(), snapshot.key);
+                    houses = snapshot.val();
+                    for (const h in houses) {
+                        house = houses[h];
+                        newbox = $('<div class="col s12 m6 l3"></div>');
+                        card = $(`<div id="${removeSpace(h)}"class="card blue-grey white-text"></div>`);
+                        cardcontent = $('<div class="card-content" white-text></div>');
+                        cardtitle = $(`<span class="card-title"><h3 style="font-size: 2em; color:white"> ${h} </h3></span>`);
+                        button = $(`<button style="margin: 8px"class="waves-effect waves-light btn join_button">JOIN</button>`);
+
+                        newbox.appendTo(box);
+                        card.appendTo(newbox);
+                        cardcontent.appendTo(card);
+                        cardtitle.appendTo(cardcontent);
+
+                        button.appendTo(cardcontent);
+                        $(`<br><b style="color: #fff176" style="font-size: 1.4em">${house.desc}</b>`).appendTo(cardcontent);
+                        $(`<br><p style="color: #fff9c4">${formatString(house.desc2)}</p>`).appendTo(cardcontent);
+                        $(`<br><b class="count" style="color: #ffeb3b; font-size: 1.5em">${house.count}/${house.cap}</b> <label style="color: #fff3e0">students</label>`).appendTo(cardcontent);
+                        $(`<br><b>debug:</b><label>${JSON.stringify(house)}</label>`).appendTo(cardcontent);
+
+                        button.on('click', { house: h }, function (event) {
+                            $('#msg').html('joining..');
+                            $.ajax({
+                                url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/movePerson',
+                                method: 'POST',
+                                data: {
+                                    house: event.data.house,
+                                    id: user,
+                                    token: token,
+                                },
+                                success: function (res) {
+                                    // alert(res.message);
+                                    $('#msg').html(res.message);
+                                    if (res.message === 'wrong credentials') {
+                                        document.cookie = 'token=';
+                                        document.cookie = 'username=';
+                                        // console.log('move failed', res);
+                                        // window.location.href = ('login.html');
+                                    }
+                                    if (res.success) {
+                                        $('#house').html(event.data.house);
+                                        updateHouseCount();
+                                    }
+                                },
+
+                            });
+                        });
+                    }
+                    // return alert(snapshot.val());
+                });
+
+
+                //update count
+
+            });
+
+            lockHouse = function () {
+                if (userdata.is_confirmed) {
+                    alert('already confirmed');
+                }
+                else if (confirm('confirm your house????')) {
+                    $('#msg').html('confirming...');
+                    $.ajax({
+                        url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/confirmHouse',
+                        method: 'POST',
+                        data: {
+                            id: user,
+                            token: token
+                        },
+                        success: function (res) {
+                            $('#msg').html(res.message);
+                            loadUserData();
+                        },
+
+                    });
+                }
+                else {
+                    $('#msg').html('cancelled');
+                }
+            }
+            loadUserData = function () {
+                $.ajax({
+                    url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/getPersonInfo2',
+                    method: 'POST',
+                    data: {
+                        id: user,
+                        token: token
+                    },
+                    success: function (res) {
+                        if (!res.success) {
+                            document.cookie = 'token=';
+                            document.cookie = 'username=';
+                            console.log('load user data failed', res);
+                            // window.location.href = ('login.html');
+                        }
+                        else {
+                            userdata = res.data;
+                            $('#fullname').html(res.data['dynamic/fullname']);
+                            $('#house').html(res.data['house']);
+                            $('#rawdata').html(JSON.stringify(res.data));
+                        }
+                        if (userdata && userdata.is_confirmed) {
+                            $('#house_title').html(`you already confirmed your house (${userdata.house})`);
+                            $('.join_button').hide();
+                            // $('#box').hide();
+                        }
+                        else {
+                            $('.join_button').show();
+                        }
+                    },
+                    async: true
+                });
+            }
+            logout = function () {
+                $('#msg').html('logout..')
+                $.ajax({
+                    url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/logout',
+                    method: 'POST',
+                    data: {
+                        id: user,
+                        token: token
+                    },
+                    success: function (res) {
+                        $('#msg').html(res.message);
+                        // window.location.href = ('login.html');
+                    },
+
+                });
+            }
+            updateHouseCount = function () {
+                var prev = $('#msg').html();
+                $('#msg').html('refreshing');
+                $.ajax({
+                    url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/getHouses',
+                    success: function (res) {
+                        console.log('getHouse', res.data);
+                        var houses = res.data;
+                        for (var h in houses) {
+                            house = houses[h];
+                            $(`#${removeSpace(h)} .count`).html(`${house.count}/${house.cap}`);
+                        }
+                        $('#msg').html(prev);
+                    }
+                });
+            }
+            updateHouse2 = function (houseData) {
+                $('#msg').html('refreshed on data change');
+                for (var h in houseData) {
+                    house = houseData[h];
+                    $(`#${removeSpace(h)} .count`).html(`${house.count}/${house.cap}`);
+                }
+            }
+            loadHouses = function () {
+                box.html('loading...');
+                $.ajax({
+                    url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/getHouses',
+                    success: function (res) {
+                        if (res.success === false) {
+                            alert('error');
+                        }
+                        else {
+                            box.html('');
+                            houses = res.data;
+                            for (const h in houses) {
+                                house = houses[h];
+                                newbox = $('<div class="col s12 m6 l3"></div>');
+                                card = $(`<div id="${removeSpace(h)}"class="card blue-grey white-text"></div>`);
+                                cardcontent = $('<div class="card-content" white-text></div>');
+                                cardtitle = $(`<span class="card-title"><h3 style="font-size: 2em; color:white"> ${h} </h3></span>`);
+                                button = $(`<button style="margin: 8px"class="waves-effect waves-light btn join_button">JOIN</button>`);
+
+                                newbox.appendTo(box);
+                                card.appendTo(newbox);
+                                cardcontent.appendTo(card);
+                                cardtitle.appendTo(cardcontent);
+
+                                button.appendTo(cardcontent);
+                                $(`<br><b style="color: #fff176" style="font-size: 1.4em">${house.desc}</b>`).appendTo(cardcontent);
+                                $(`<br><p style="color: #fff9c4">${formatString(house.desc2)}</p>`).appendTo(cardcontent);
+                                $(`<br><b class="count" style="color: #ffeb3b; font-size: 1.5em">${house.count}/${house.cap}</b> <label style="color: #fff3e0">students</label>`).appendTo(cardcontent);
+                                $(`<br><b>debug:</b><label>${JSON.stringify(house)}</label>`).appendTo(cardcontent);
+
+                                button.on('click', { house: h }, function (event) {
+                                    $('#msg').html('joining..');
+                                    $.ajax({
+                                        url: proxy + 'https://us-central1-' + projectName + '.cloudfunctions.net/movePerson',
+                                        method: 'POST',
+                                        data: {
+                                            house: event.data.house,
+                                            id: user,
+                                            token: token,
+                                        },
+                                        success: function (res) {
+                                            // alert(res.message);
+                                            $('#msg').html(res.message);
+                                            if (!res.success) {
+                                                document.cookie = 'token=';
+                                                document.cookie = 'username=';
+                                                console.log('move failed', res.message);
+                                                window.location.href = ('login.html');
+                                            }
+                                            if (res.success) {
+                                                $('#house').html(event.data.house);
+                                                updateHouseCount();
+                                            }
+                                        },
+
+                                    });
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        </script>
+
+    </body>
+
+</htm>
