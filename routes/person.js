@@ -236,7 +236,10 @@ module.exports = function (agent, db) {
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             client.hset(`student:${id}`, 'locked', '1'); // redis always store as String
-            if (+user.locked !== 1){
+            if (+user.locked === 1){
+                return res.send(Resp(false, `You've already confirmed your house`));
+            }
+            else {
                 db.ref(`/houses/${user.house}`).transaction(house => {
                     if (house === null)
                         return null;
@@ -246,37 +249,36 @@ module.exports = function (agent, db) {
                         return house;
                     }
                 })
-                return res.send(Resp(false, `You've already confirmed your house`));
+                return res.send(Resp(true, {
+                    modify_list: JSON.stringify({
+                        idList: [user._id],
+                        modifyList: [{
+                            columnName: config.houseColumn,
+                            value: `"${user.house}"`
+                        }]
+                    })
+                }));
+                // return agent.post(`https://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
+                //     .send({
+                //         modify_list: JSON.stringify({
+                //             idList: [user._id],
+                //             modifyList: [{
+                //                 columnName: config.houseColumn,
+                //                 value: `"${newHouse}"`
+                //             }]
+                //         })
+                //     })
+                //     .withCredentials()
+                //     .then(() => {
+                //         return res.send(Resp(true, 'OK'));
+                //     })
+                //     .catch((err) => { 
+                //         console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err); 
+                //         return res.send(Resp(false,'Something went wrong'));
+                //     })
+        
+                     // OK
             }
-            return res.send(Resp(true, {
-                modify_list: JSON.stringify({
-                    idList: [user._id],
-                    modifyList: [{
-                        columnName: config.houseColumn,
-                        value: `"${user.house}"`
-                    }]
-                })
-            }));
-            // return agent.post(`https://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
-            //     .send({
-            //         modify_list: JSON.stringify({
-            //             idList: [user._id],
-            //             modifyList: [{
-            //                 columnName: config.houseColumn,
-            //                 value: `"${newHouse}"`
-            //             }]
-            //         })
-            //     })
-            //     .withCredentials()
-            //     .then(() => {
-            //         return res.send(Resp(true, 'OK'));
-            //     })
-            //     .catch((err) => { 
-            //         console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err); 
-            //         return res.send(Resp(false,'Something went wrong'));
-            //     })
-    
-                 // OK
         }
         else {
             client.hdel(`student:${id}`, 'token');
