@@ -157,7 +157,7 @@ module.exports = function (agent, db) {
                 var locked = user.locked,
                     oldHouse = user.house;
 
-                if (locked === '1')
+                if (+locked === 1)
                     return res.send(Resp(false, "You've already confirmed your house"));
 
                 // Move !
@@ -236,7 +236,7 @@ module.exports = function (agent, db) {
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             client.hset(`student:${id}`, 'locked', '1'); // redis always store as String
-            if (user.locked !== '1'){
+            if (+user.locked !== 1){
                 db.ref(`/houses/${user.house}`).transaction(house => {
                     if (house === null)
                         return null;
@@ -246,6 +246,7 @@ module.exports = function (agent, db) {
                         return house;
                     }
                 })
+                return res.send(Resp(false, `You've already confirmed your house`));
             }
             return res.send(Resp(true, {
                 modify_list: JSON.stringify({
