@@ -150,7 +150,7 @@ module.exports = function (agent, db) {
         catch (err) {
             return res.send(Resp(false, 'bad request'));
         }
-        // get 
+        // get
         var user = await client.hgetallAsync(`student:${id}`)
         if (user && user.token === token) {
             try {
@@ -245,35 +245,34 @@ module.exports = function (agent, db) {
                     return house;
                 }
             })
-            return res.send(Resp(true, {
-                modify_list: JSON.stringify({
-                    idList: [user._id],
-                    modifyList: [{
-                        columnName: config.houseColumn,
-                        value: `"${user.house}"`
-                    }]
+            // return res.send(Resp(true, {
+            //     modify_list: JSON.stringify({
+            //         idList: [user._id],
+            //         modifyList: [{
+            //             columnName: config.houseColumn,
+            //             value: `"${user.house}"`
+            //         }]
+            //     })
+            // }));
+            return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
+                .send({
+                    modify_list: JSON.stringify({
+                        idList: [user._id],
+                        modifyList: [{
+                            columnName: config.houseColumn,
+                            value: `'${user.house}'`
+                        }]
+                    })
                 })
-            }));
-            // return agent.post(`https://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
-            //     .send({
-            //         modify_list: JSON.stringify({
-            //             idList: [user._id],
-            //             modifyList: [{
-            //                 columnName: config.houseColumn,
-            //                 value: `"${newHouse}"`
-            //             }]
-            //         })
-            //     })
-            //     .withCredentials()
-            //     .then(() => {
-            //         return res.send(Resp(true, 'OK'));
-            //     })
-            //     .catch((err) => { 
-            //         console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err); 
-            //         return res.send(Resp(false,'Something went wrong'));
-            //     })
-    
-                 // OK
+                .withCredentials()
+                .then(() => {
+                    return res.send(Resp(true, 'OK'));
+                })
+                .catch((err) => {
+                    console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err);
+                    return res.send(Resp(false,'Something went wrong'));
+                })
+
         }
         else {
             client.hdel(`student:${id}`, 'token');
@@ -324,20 +323,19 @@ module.exports = function (agent, db) {
                         return res.send(Resp(false, 'Invalid House'));
                     }
                     else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
-                        return res.send(Resp(true, 'OK? should sent to DTNL')) // don't forget to revert in case of error
+                        // return res.send(Resp(true, 'OK? should sent to DTNL')) // don't forget to revert in case of error
 
-                        // 
-                        // return agent.post(`https://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
-                        //     .send(formData)
-                        //     .then(() => {
-                        //         return res.send(Resp(true, 'OK'));
-                        //     }).catch((err) => {
-                        //         console.error('[REGIST] error', err);
-                        //         db.ref(`/houses/${house}/count`).transaction(count => count-1)
-                        //         return res.send(Resp(false, 'Error, try checking the form again'));
-                        //     });
+                        return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
+                            .send(formData)
+                            .then(() => {
+                                return res.send(Resp(true, 'OK'));
+                            }).catch((err) => {
+                                console.error('[REGIST] error', err);
+                                db.ref(`/houses/${house}/count`).transaction(count => count-1)
+                                return res.send(Resp(false, 'Error, try checking the form again'));
+                            });
                     }
-                    else { // register failed coz house is full 
+                    else { // register failed coz house is full
                         return res.send({ success: false, message: 'full house' });
                     }
                 });
