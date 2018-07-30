@@ -7,8 +7,13 @@ var util = require('./util'),
     Resp = util.makeResponse;
 var config = require('../config');
 var query = require('./connect').query; // query to DTNL (batched reponse)
-var client = redis.createClient(6379, config.redisAddr, { no_ready_check: true });
-
+var client = redis.createClient(6379, config.redisAddr);
+var assert = require('assert');
+client.on('error', (err) => {
+    console.log('error?', err)
+    console.log(client.connected);
+    console.log('reconnect?');
+});
 
 // var conn = mongoose.createConnection(config.mongoURL);
 
@@ -17,28 +22,26 @@ var client = redis.createClient(6379, config.redisAddr, { no_ready_check: true }
 
 module.exports = function (agent, db) {
     var router = express.Router();
-    router.post('/login', async function (req, res, next) {
+    var login = router.post('/login', async function (req, res, next) {
         var { id, tel } = req.body;
         query(agent, req.body, async (data) => {
             if (data) {
                 try {
-                    if (data.length !== 1)
-                        throw new Error(`Query Error: More than 1 student returned. query: (${id},${tel})`);
+                    assert.strictEqual(data.length, 1, `Query Error: More than 1 student returned. query: (${id},${tel})`)
 
-                    std = data[0];
+                    var std = data[0];
+                    var house = std[config.houseColumn], locked = std['locked'];
                     var token = await bcrypt.hash(Date.now().toString(16), 8);
-                    var tokenExpire = new Date();
-                    tokenExpire.setTime(tokenExpire.getTime() + config.tokenAge);
-
-                    client.hgetAsync(`student:${id}`, 'token')
-                        .then(async oldToken => {
-                            if (oldToken && oldToken.token) {
-                                client.del(`token:${oldToken.token}`);
+                    var {id, tel, _id} = std;
+                    client.hgetallAsync(`student:${id}`)
+                        .then(async student => {
+                            if (student === null) {
+                                client.hmset(`student:${id}`, { token: token, house: house, locked: 0, tel: tel, id: id, _id: _id});
                             }
-                            await client.hmsetAsync(`student:${id}`, { token: token });
-                            console.log(`set ${id}`)
-                            await client.hmsetAsync(`token:${token}`, { id: id, tel: tel, _id: std['_id'], tokenExpire: tokenExpire.getTime() })
-                            return res.send(Resp(true, 'OK', { token: token, tokenExpire: tokenExpire.getTime() }))
+                            else {
+                                client.hmset(`student:${id}`, { token: token});
+                            }
+                            res.send(Resp(true, 'OK', { token: token}))
                         });
                 }
                 catch (err) {
@@ -52,153 +55,115 @@ module.exports = function (agent, db) {
         });
     });
 
-    router.post('/logout', async function (req, res, next) {
-        var { token } = req.body;
-        try {
-            var tok = await client.hgetallAsync(`token:${token}`)
-            if (tok) {
-                client.hdel(`student:${tok.id}`, 'token');
-                client.del(`token:${token}`)
-                return res.send(Resp(true, 'OK'));
+    var logout = router.post('/logout', async function (req, res, next) {
+        var { id, token } = req.body;
+        client.hgetAsync(`student:${id}`, 'token')
+        .then(tok => {
+            if (tok === token){
+                client.hdelAsync(`student:${id}`, 'token')
+                .then(() => {
+                    return res.send(Resp(true, 'OK'));
+                })
             }
             else {
-                return res.send(Resp(false, 'Wrong token'));
+                return res.send(Resp(false, 'Wrong Token'));
             }
-        }
-        catch (err) {
-            console.error('[LOGOUT]', err)
-            return res.send(Resp(false, 'Error'));
-        }
+        })
     });
 
-    router.post('/getInfo', async function (req, res, next) {
-        var { token } = req.body;
-
-        var tok = await client.hgetallAsync(`token:${token}`);
-        if (tok && Date.now() < tok.tokenExpire) {
-            var { id, tel } = tok;
-            var student = await client.hgetallAsync(`student:${id}`);
-            if (student.token === token) {
-                query(agent, { tel: tel, id: id },
-                    (data) => {
-                        try {
-                            if (data.length !== 1)
-                                throw new Error(`Query Error: More than 1 student returned. query: (${id},${tel})`);
-                            if (data) {
-                                var std = data[0];
-                                try { // note that Locked/currentHouse is stored in DTNL (update as you change house!)
-                                    return res.send(Resp(true, 'OK', std));
-                                }
-                                catch (err) {
-                                    return res.send(Resp(false, 'Error'));
-                                }
+    var getInfo = router.post('/getInfo', async function (req, res, next) {
+        var { id, token } = req.body;
+    
+        var user = await client.hgetallAsync(`student:${token}`);
+        if (user && user.token === token) {
+            var { id, tel } = user;
+            query(agent, { tel: tel, id: id },
+                (data) => {
+                    try {
+                        assert.strictEqual(data.length, 1, `Query Error: More than 1 student returned. query: (${id},${tel})`)
+                        if (data) {
+                            var std = data[0];
+                            try { // note that Locked/currentHouse is stored in DTNL (update as you change house!)
+                                return res.send(Resp(true, 'OK', std));
                             }
-                            else {
-                                console.warn(`[WARNING] found user:${id} in mongo but not in DNL`)
-                                return res.send(Resp(false, 'Not Found'));
+                            catch (err) {
+                                return res.send(Resp(false, 'Error'));
                             }
                         }
-                        catch (err) {
-                            console.error('[GETINFO]', err);
-                            return res.send(Resp(false, 'Error'));
+                        else {
+                            console.warn(`[WARNING] found user:${id} in mongo but not in DNL`)
+                            return res.send(Resp(false, 'Not Found'));
                         }
-                    })
-            }
-            else {
-                client.delAsync(`token:${token}`);
-                client.hdelAsync(`student:${id}`, 'token');
-                console.warn('[MOVEPERSO] Leftover token')
-                return res.send(Resp(false, 'Wrong token'));
-            }
+                    }
+                    catch (err) {
+                        console.error('[GETINFO]', err);
+                        return res.send(Resp(false, 'Error'));
+                    }
+            });
         }
         else {
             return res.send(Resp(false, 'Wrong Token'));
         }
     });
 
-    router.post('/movePerson', async function (req, res, next) {
-        var { token, newHouse } = req.body;
+    var movePerson = router.post('/movePerson', async function (req, res, next) {
+        var token = req.body.token, 
+            newHouse = req.body.house
+            id = req.body.id;
 
         // get 
-        var tok = await client.hgetallAsync(`token:${token}`)
-        if (tok && Date.now() < tok.tokenExpire) {
-            var { id, tel, _id } = tok;
-            var student = await client.hgetallAsync(`student:${id}`);
-            if (student.token === token) {
-                query(agent, { tel: tel, id: id }, // we need to query to check whether user is locked and oldHouse (may be cache it ? TODO)
-                    (data) => {
-                        try {
-                            if (data) {
-                                if (data.length !== 1)
-                                    throw new Error(`Query Error: More than 1 student returned. query: (${id},${tel})`);
-                                var std = data[0]; // note that Locked/currentHouse is stored in DTNL (update as you change house!)
-                                var oldHouse = std[config.houseColumn];
-                                if (std.locked)
-                                    return res.send(Resp(false, "You've already confirmed your house"));
+        var user = await client.hgetallAsync(`student:${id}`)
+        if (user && user.token === token) {
+            try { 
+                var locked = user.locked, 
+                    oldHouse = user.house;
 
-                                // Move !
-                                return db.ref(`/houses/${newHouse}`).transaction((house) => {
-                                    if (house === null) {
-                                        return null;
-                                    }
-                                    else if (house.count < house.cap) {
-                                        house.count += 1;
-                                        return house;
-                                    }
-                                    else {
-                                        return;
-                                    }
-                                },(err, commited, snapshot) => {
-                                        if (err) {
-                                            console.error('[MOVEPERSON] firebase error', err);
-                                            return res.send(Resp(false, 'Error'));
-                                        }
-                                        else if (snapshot.val() === null) {
-                                            return res.send(Resp(false, 'Invalid House'));
-                                        }
-                                        else if (commited === true) { // when null --> moving to non existent house
-                                            return db.ref(`/houses/${oldHouse}/count`).transaction((count) => count - 1
-                                                , () => {
-                                                    return res.send(Resp(true, 'OK?', {
-                                                        modify_list: JSON.stringify({
-                                                            idList: [_id],
-                                                            modifyList: [{
-                                                                columnName: config.houseColumn,
-                                                                value: `"${newHouse}"`,
-                                                            }]
-                                                        })
-                                                    }));
-                                                    // modify_list: `{"idList":["${_id}"],"modifyList":[{"columnName":"${config.houseColumn}","value":"\\"${esc(house.val())}\\""}]}`
+                if (locked === '1')
+                    return res.send(Resp(false, "You've already confirmed your house"));
 
-                                                });
-                                        }
-                                        else
-                                            return res.send(Resp(false, 'Full House'));
-                                    });
-                            }
-                            else {
-                                console.warn(`[WARNING] found user:${id} in redis but not in DNL`)
-                                return res.send(Resp(false, 'Not Found'));
-                            }
-                        }
-                        catch (err) {
-                            console.error('[GETINFO]', err);
+                // Move !
+                return db.ref(`/houses/${newHouse}`).transaction((house) => {
+                    console.log(house);
+                    if (house === null) {
+                        return null;
+                    }
+                    else if (house.count < house.cap) {
+                        house.count += 1;
+                        return house;
+                    }
+                    else {
+                        return;
+                    }
+                },(err, commited, snapshot) => {
+                    console.log(err, commited, snapshot.val())
+                        if (err) {
+                            console.error('[MOVEPERSON] firebase error', err);
                             return res.send(Resp(false, 'Error'));
                         }
-                    })
+                        else if (snapshot.val() === null) {
+                            return res.send(Resp(false, 'Invalid House'));
+                        }
+                        else if (commited === true) { // when null --> moving to non existent house
+                            return db.ref(`/houses/${oldHouse}/count`).transaction((count) => count - 1
+                                , () => {
+                                    client.hset(`student:${id}`, 'house', newHouse);
+                                    return res.send(Resp(true, 'OK'));
+                                });
+                        }
+                        else
+                            return res.send(Resp(false, 'Full House'));
+                });
             }
-            else {
-                client.delAsync(`token:${token}`);
-                client.hdelAsync(`student:${id}`, 'token');
-                console.warn('[MOVEPERSON] Leftover token')
-                return res.send(Resp(false, 'Wrong token'));
+            catch (err) {
+                console.error('[GETINFO]', err);
+                return res.send(Resp(false, 'Error'));
             }
         }
         else {
             return res.send(Resp(false, 'Wrong Token'));
         }
     });
-    router.get('/getHouses', function(req, res, next){
+    var getHouses = router.get('/getHouses', function(req, res, next){
         return db.ref('/houses').once('value')
             .then(snapshot => {
                 return res.send(Resp(true, 'OK', snapshot.val()));
@@ -209,44 +174,36 @@ module.exports = function (agent, db) {
             })
     })
 
-    router.post('/confirmHouse', async function (req, res, next) {
-        var { token } = req.body;
-
-        var tok = await client.hgetallAsync(`token:${token}`);
-        if (tok && Date.now() < tok.tokenExpire) {
-            var { id, tel, _id } = tok;
-            console.log(tok);
-            var student = await client.hgetallAsync(`student:${id}`);
-            if (student.token === token) {
-                console.log(id, tel, _id);
-                return res.send(Resp(true, {
-                    modify_list: JSON.stringify({
-                        idList: [_id],
-                        modifyList: [{
-                            columnName: 'locked',
-                            value: "1"
-                        }]
-                    })
-                }));
-            }
-            else {
-                client.delAsync(`token:${token}`);
-                client.hdelAsync(`student:${id}`, 'token');
-                console.warn('[MOVEPERSO] Leftover token')
-                return res.send(Resp(false, 'Wrong token'));
-            }
+    var confirmHouse = router.post('/confirmHouse', async function (req, res, next) {
+        var { id, token } = req.body;
+        var user = await client.hgetallAsync(`student:${id}`);
+        if (user.token === token) {
+            client.hset(`student:${id}`, 'locked', '1'); // redis always store as String
+            return res.send(Resp(true, {
+                modify_list: JSON.stringify({
+                    idList: [user._id],
+                    modifyList: [{
+                        columnName: 'locked',
+                        value: "1"
+                    }, {
+                        columnName: config.houseColumn,
+                        value: `"${newHouse}"`
+                    }]
+                })
+            }));
         }
         else {
-            return res.send(Resp(false, 'Wrong Token'));
+            client.hdel(`student:${id}`, 'token');
+            console.warn('[MOVEPERSON] Leftover token')
+            return res.send(Resp(false, 'Wrong token'));
         }
     });
-    router.post('/register', function (req, res, next){
+    var register = router.post('/register', function (req, res, next){
         try {
             var formData = req.body.formData; // form info as JSON, send to DTNL
             if (typeof formData !== 'object') {
                 formData = JSON.parse(formData);
             }
-            
             var tel = formData[config.telColumn].toString();
             var id = formData[config.idColumn].toString();
             var house = formData[config.houseColumn].toString();
