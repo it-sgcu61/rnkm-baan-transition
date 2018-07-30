@@ -236,15 +236,17 @@ module.exports = function (agent, db) {
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             client.hset(`student:${id}`, 'locked', '1'); // redis always store as String
-            db.ref(`/houses/${user.house}`).transaction(house => {
-                if (house === null)
-                    return null;
-                else if (house) {
-                    house.avail = (house.avail | 0) - 1;
-                    house.used = (house.used | 0) - 1;
-                    return house;
-                }
-            })
+            if (user.locked !== '1'){
+                db.ref(`/houses/${user.house}`).transaction(house => {
+                    if (house === null)
+                        return null;
+                    else if (house) {
+                        house.avail = (house.avail | 0) - 1;
+                        house.used = (house.used | 0) - 1;
+                        return house;
+                    }
+                })
+            }
             return res.send(Resp(true, {
                 modify_list: JSON.stringify({
                     idList: [user._id],
