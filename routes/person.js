@@ -20,10 +20,18 @@ client.on('error', (err) => {
 // var acc = [];
 // var lock = 0, cap = 10, delay = 2000;
 
+
 module.exports = function (agent, db) {
     var router = express.Router();
     var login = router.post('/login', async function (req, res, next) {
-        var { id, tel } = req.body;
+        try {
+            var { id, tel } = req.body;
+            id = id.toString();
+            tel = tel.toString();
+        }
+        catch (err) {
+            return res.send(Resp(false, 'bad request'));
+        }
         query(agent, req.body, async (data) => {
             if (data) {
                 try {
@@ -32,16 +40,28 @@ module.exports = function (agent, db) {
                     var std = data[0];
                     var house = std[config.houseColumn], locked = std['locked'];
                     var token = await bcrypt.hash(Date.now().toString(16), 8);
-                    var {id, tel, _id} = std;
+                    var id = std[config.idColumn],
+                     tel = std[config.telColumn],
+                    _id = std['_id'];
                     client.hgetallAsync(`student:${id}`)
                         .then(async student => {
+                            console.log(student);
                             if (student === null) {
-                                client.hmset(`student:${id}`, { token: token, house: house, locked: 0, tel: tel, id: id, _id: _id});
+                                client.hmset(`student:${id}`, { token: token, house: house, locked: 0, tel: tel, id: id, _id: _id });
+                                db.ref(`/houses/${house}`).transaction(house => {
+                                    if (house === null)
+                                        return null;
+                                    else if (house) {
+                                        house.avail = (house.avail | 0) + 1;
+                                        house.used = (house.used | 0) + 1;
+                                        return house;
+                                    }
+                                })
                             }
                             else {
-                                client.hmset(`student:${id}`, { token: token});
+                                client.hmset(`student:${id}`, { token: token });
                             }
-                            res.send(Resp(true, 'OK', { token: token}))
+                            res.send(Resp(true, 'OK', { token: token }))
                         });
                 }
                 catch (err) {
@@ -56,24 +76,37 @@ module.exports = function (agent, db) {
     });
 
     var logout = router.post('/logout', async function (req, res, next) {
-        var { id, token } = req.body;
+        try {
+            var { id, token } = req.body;
+            id = id.toString();
+            token = token.toString();
+        }
+        catch (err) {
+            return res.send(Resp(false, 'bad request'));
+        }
         client.hgetAsync(`student:${id}`, 'token')
-        .then(tok => {
-            if (tok === token){
-                client.hdelAsync(`student:${id}`, 'token')
-                .then(() => {
-                    return res.send(Resp(true, 'OK'));
-                })
-            }
-            else {
-                return res.send(Resp(false, 'Wrong Token'));
-            }
-        })
+            .then(tok => {
+                if (tok === token) {
+                    client.hdelAsync(`student:${id}`, 'token')
+                        .then(() => {
+                            return res.send(Resp(true, 'OK'));
+                        })
+                }
+                else {
+                    return res.send(Resp(false, 'Wrong Token'));
+                }
+            })
     });
 
     var getInfo = router.post('/getInfo', async function (req, res, next) {
-        var { id, token } = req.body;
-    
+        try {
+            var { id, token } = req.body;
+            id = id.toString();
+            token = token.toString();
+        }
+        catch (err) {
+            return res.send(Resp(false, 'bad request'));
+        }
         var user = await client.hgetallAsync(`student:${token}`);
         if (user && user.token === token) {
             var { id, tel } = user;
@@ -99,7 +132,7 @@ module.exports = function (agent, db) {
                         console.error('[GETINFO]', err);
                         return res.send(Resp(false, 'Error'));
                     }
-            });
+                });
         }
         else {
             return res.send(Resp(false, 'Wrong Token'));
@@ -107,15 +140,19 @@ module.exports = function (agent, db) {
     });
 
     var movePerson = router.post('/movePerson', async function (req, res, next) {
-        var token = req.body.token, 
-            newHouse = req.body.house
-            id = req.body.id;
-
+        try {
+            var id = req.body.id.toString();
+            var token = req.body.token.toString();
+            var newHouse = req.body.house.toString();
+        }
+        catch (err) {
+            return res.send(Resp(false, 'bad request'));
+        }
         // get 
         var user = await client.hgetallAsync(`student:${id}`)
         if (user && user.token === token) {
-            try { 
-                var locked = user.locked, 
+            try {
+                var locked = user.locked,
                     oldHouse = user.house;
 
                 if (locked === '1')
@@ -123,35 +160,45 @@ module.exports = function (agent, db) {
 
                 // Move !
                 return db.ref(`/houses/${newHouse}`).transaction((house) => {
-                    console.log(house);
                     if (house === null) {
                         return null;
                     }
                     else if (house.count < house.cap) {
                         house.count += 1;
+                        house.used =  (house.used | 0 ) + 1;
                         return house;
                     }
                     else {
                         return;
                     }
-                },(err, commited, snapshot) => {
-                    console.log(err, commited, snapshot.val())
-                        if (err) {
-                            console.error('[MOVEPERSON] firebase error', err);
-                            return res.send(Resp(false, 'Error'));
-                        }
-                        else if (snapshot.val() === null) {
-                            return res.send(Resp(false, 'Invalid House'));
-                        }
-                        else if (commited === true) { // when null --> moving to non existent house
-                            return db.ref(`/houses/${oldHouse}/count`).transaction((count) => count - 1
-                                , () => {
-                                    client.hset(`student:${id}`, 'house', newHouse);
-                                    return res.send(Resp(true, 'OK'));
-                                });
-                        }
-                        else
-                            return res.send(Resp(false, 'Full House'));
+                }, (err, commited, snapshot) => {
+                    if (err) {
+                        console.error('[MOVEPERSON] firebase error', err);
+                        return res.send(Resp(false, 'Error'));
+                    }
+                    else if (snapshot.val() === null) {
+                        return res.send(Resp(false, 'Invalid House'));
+                    }
+                    else if (commited === true) { // when null --> moving to non existent house
+                        return db.ref(`/houses/${oldHouse}`).transaction((house) => {
+                            if (house === null) {
+                                return null;
+                            }
+                            else if (house) {
+                                house.count -= 1;
+                                house.used = (house.used | 0 ) - 1;
+                                return house;
+                            }
+                            else {
+                                return;
+                            }
+                        }, () => {
+                                client.hset(`student:${id}`, 'house', newHouse);
+                                return res.send(Resp(true, 'OK'));
+                            });
+                    }
+                    else
+                        return res.send(Resp(false, 'Full House'));
                 });
             }
             catch (err) {
@@ -163,7 +210,7 @@ module.exports = function (agent, db) {
             return res.send(Resp(false, 'Wrong Token'));
         }
     });
-    var getHouses = router.get('/getHouses', function(req, res, next){
+    var getHouses = router.get('/getHouses', function (req, res, next) {
         return db.ref('/houses').once('value')
             .then(snapshot => {
                 return res.send(Resp(true, 'OK', snapshot.val()));
@@ -175,22 +222,56 @@ module.exports = function (agent, db) {
     })
 
     var confirmHouse = router.post('/confirmHouse', async function (req, res, next) {
-        var { id, token } = req.body;
+        try {
+            var { id, token } = req.body;
+            id = id.toString();
+            token = token.toString();
+        }
+        catch (err) {
+            return res.send(Resp(false, 'bad request'));
+        }
+
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             client.hset(`student:${id}`, 'locked', '1'); // redis always store as String
+            db.ref(`/houses/${user.house}`).transaction(house => {
+                if (house === null)
+                    return null;
+                else if (house) {
+                    house.avail = (house.avail | 0) - 1;
+                    house.used = (house.used | 0) - 1;
+                    return house;
+                }
+            })
             return res.send(Resp(true, {
                 modify_list: JSON.stringify({
                     idList: [user._id],
                     modifyList: [{
-                        columnName: 'locked',
-                        value: "1"
-                    }, {
                         columnName: config.houseColumn,
-                        value: `"${newHouse}"`
+                        value: `"${user.house}"`
                     }]
                 })
             }));
+            // return agent.post(`https://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
+            //     .send({
+            //         modify_list: JSON.stringify({
+            //             idList: [user._id],
+            //             modifyList: [{
+            //                 columnName: config.houseColumn,
+            //                 value: `"${newHouse}"`
+            //             }]
+            //         })
+            //     })
+            //     .withCredentials()
+            //     .then(() => {
+            //         return res.send(Resp(true, 'OK'));
+            //     })
+            //     .catch((err) => { 
+            //         console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err); 
+            //         return res.send(Resp(false,'Something went wrong'));
+            //     })
+    
+                 // OK
         }
         else {
             client.hdel(`student:${id}`, 'token');
@@ -198,7 +279,7 @@ module.exports = function (agent, db) {
             return res.send(Resp(false, 'Wrong token'));
         }
     });
-    var register = router.post('/register', function (req, res, next){
+    var register = router.post('/register', function (req, res, next) {
         try {
             var formData = req.body.formData; // form info as JSON, send to DTNL
             if (typeof formData !== 'object') {
@@ -213,9 +294,9 @@ module.exports = function (agent, db) {
         }
         catch (err) {
             console.log(err);
-            return res.send({ success: false, message: 'bad request' });
+            return res.send(Resp(false, 'Bad request'));
         }
-        return query(agent, {tel: tel, id: id}, (data) => {
+        return query(agent, { tel: tel, id: id }, (data) => {
             if (data && data.length) {
                 console.log(data)
                 return res.send(Resp(false, `You've already registered`));
@@ -243,20 +324,16 @@ module.exports = function (agent, db) {
                     else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
                         return res.send(Resp(true, 'OK? should sent to DTNL')) // don't forget to revert in case of error
 
-                            // `
-                            // return agent.post(`${config.prot}://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
-                            //     .send(formData)
-                            //     .then(() => {
-                            //         return db.ref(`/person/${url(id)}`).set({ id: id, house: house, locked: 0 }).then(() => {
-                            //             return res.send({ success: true, message: 'OK' });
-                            //             // return res.send('OK');
-                            //         });
-                            //     }).catch((err) => {
-                            //         console.log('regist error', err);
-                            //         return db.ref(`/houses/${house}/count`).transaction(count => count - 1).then(() => { // revert
-                            //             return res.send({ success: false, message: 'DTNL error, also try checking form again' });
-                            //         });
-                            //     });
+                        // 
+                        // return agent.post(`https://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
+                        //     .send(formData)
+                        //     .then(() => {
+                        //         return res.send(Resp(true, 'OK'));
+                        //     }).catch((err) => {
+                        //         console.error('[REGIST] error', err);
+                        //         db.ref(`/houses/${house}/count`).transaction(count => count-1)
+                        //         return res.send(Resp(false, 'Error, try checking the form again'));
+                        //     });
                     }
                     else { // register failed coz house is full 
                         return res.send({ success: false, message: 'full house' });
