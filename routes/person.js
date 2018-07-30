@@ -107,7 +107,7 @@ module.exports = function (agent, db) {
         catch (err) {
             return res.send(Resp(false, 'bad request'));
         }
-        var user = await client.hgetallAsync(`student:${token}`);
+        var user = await client.hgetallAsync(`student:${id}`);
         if (user && user.token === token) {
             var { id, tel } = user;
             query(agent, { tel: tel, id: id },
@@ -117,6 +117,8 @@ module.exports = function (agent, db) {
                         if (data) {
                             var std = data[0];
                             try { // note that Locked/currentHouse is stored in DTNL (update as you change house!)
+                                std['currentHouse'] = user.house;
+                                std['locked'] = user.locked;
                                 return res.send(Resp(true, 'OK', std));
                             }
                             catch (err) {
