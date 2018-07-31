@@ -4,3 +4,9 @@
 *.crt
 *firebase*
 todo.md
+server.key
+server.crt
+bundle.crt
+*firebase*
+mongoDB/
+MySQL/
