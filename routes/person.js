@@ -10,9 +10,7 @@ var query = require('./connect').query; // query to DTNL (batched reponse)
 var client = redis.createClient(6379, config.redisAddr);
 var assert = require('assert');
 client.on('error', (err) => {
-    console.log('error?', err)
-    console.log(client.connected);
-    console.log('reconnect?');
+    console.error('[Redis] Connection Lost, Retrying', err)
 });
 
 // var conn = mongoose.createConnection(config.mongoURL);
@@ -45,7 +43,6 @@ module.exports = function (agent, db) {
                     _id = std['_id'];
                     client.hgetallAsync(`student:${id}`)
                         .then(async student => {
-                            console.log(student);
                             if (student === null) {
                                 client.hmset(`student:${id}`, { token: token, house: house, locked: 0, tel: tel, id: id, _id: _id });
                                 db.ref(`/houses/${house}`).transaction(house => {
@@ -264,7 +261,7 @@ module.exports = function (agent, db) {
                 //             idList: [user._id],
                 //             modifyList: [{
                 //                 columnName: config.houseColumn,
-                //                 value: `"${newHouse}"`
+                //                 value: `"${user.house}"`
                 //             }]
                 //         })
                 //     })
@@ -300,12 +297,11 @@ module.exports = function (agent, db) {
 
         }
         catch (err) {
-            console.log(err);
+            console.error('[REGISTER] Error',err);
             return res.send(Resp(false, 'Bad request'));
         }
         return query(agent, { tel: tel, id: id }, (data) => {
             if (data && data.length) {
-                console.log(data)
                 return res.send(Resp(false, `You've already registered`));
             }
             else {
