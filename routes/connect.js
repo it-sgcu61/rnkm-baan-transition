@@ -11,7 +11,7 @@ queryDTNL = async function (agent, reqs) {
     // reqs = {data: {...}, cb: callback}
     // call back with data of student of which 'tel' and 'nationalID' match the data
     let ids = reqs.map(x => x.data.id)
-    var dtnlData = await agent.post(`http://${config.dtnlADDR}:80/api/v1/get/data/${config.rnkmTablename}/1`)
+    var dtnlData = await agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
         .send({
             sortby: "",
             orderby: "",

@@ -24,7 +24,6 @@ var options = {
 }
 var config = require('./config')
 const personRouter = require('./routes/person');
-const infoRouter = require('./routes/info');
 var firebaseKey = require('./firebaseKey.json');
 admin.initializeApp({
   credential: admin.credential.cert(firebaseKey),
@@ -103,11 +102,10 @@ setupDTNL().then((agent) => {
   app.use(cookieParser());
 
   app.use('/', personRouter(agent, db));
-  app.use('/', infoRouter(agent, db));
 
   app.use(function (req, res, next) {
     next(createError(404));
-  }); 
+  });
   // error handler
   // app.use(function (err, req, res, next) {
   //   // set locals, only providing error in development
@@ -119,7 +117,8 @@ setupDTNL().then((agent) => {
   // });
   app.set('port', port);
   var server = https.createServer(options, app);
+  console.log("Listening on port", port)
   server.listen(port);
   server.on('error', onError);
 })
-  .catch((error) => { throw error; process.exit(1) })
+  .catch((error) => { console.log(error); process.exit(1) })

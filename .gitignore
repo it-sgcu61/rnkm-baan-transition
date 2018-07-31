@@ -1,12 +1,19 @@
 **/node_modules
 **/config.js
+<<<<<<< HEAD
 *.key
 *.crt
 *firebase*
 todo.md
+=======
+>>>>>>> cd2be44f1c43057dd0ad759dd14ebce224ee3b41
 server.key
 server.crt
 bundle.crt
 *firebase*
 mongoDB/
+<<<<<<< HEAD
 MySQL/
+=======
+MySQL/
+>>>>>>> cd2be44f1c43057dd0ad759dd14ebce224ee3b41
