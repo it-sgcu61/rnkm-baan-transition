@@ -48,7 +48,7 @@ module.exports = function (agent) {
                     client.hgetallAsync(`student:${id}`)
                         .then(async student => {
                             if (student === null) {
-                                client.hmset(`student:${id}`, { token: token, house: house, locked: 0, tel: tel, id: id, _id: _id });
+                                client.hmset(`student:${id}`, { token: token, house: house, locked: 0, cooldown: 0,tel: tel, id: id, _id: _id });
                                 db.ref(`/houses/${house}`).transaction(house => {
                                     if (house === null)
                                         return null;
@@ -97,13 +97,14 @@ module.exports = function (agent) {
             try {
                 var locked = user.locked,
                     oldHouse = user.house;
-                if (+locked === 1){
-                    return res.send(Resp(false, "You've already confirmed your house"));
-                }
                 var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
                 if (cd >= 1){
                     client.hincrby(`student:${id}`, 'cooldown', -1);
                     return res.send(Resp(false, 'Please wait until last operation complete'));
+                }
+                if (+locked === 1){
+                    client.hincrby(`student:${id}`, 'cooldown', -1);
+                    return res.send(Resp(false, "You've already confirmed your house"));
                 }
                 // Move !
                 return db.ref(`/houses/${newHouse}`).transaction((house) => {
@@ -190,13 +191,14 @@ module.exports = function (agent) {
 
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
-            if (+user.locked === 1){
-                return res.send(Resp(false, `You've already confirmed your house`));
-            }
             var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
             if (cd >= 1){
                 client.hincrby(`student:${id}`, 'cooldown', -1);
                 return res.send(Resp(false, 'Please wait until last operation complete'));
+            }
+            if (+user.locked === 1){
+                client.hincrby(`student:${id}`, 'cooldown', -1);
+                return res.send(Resp(false, `You've already confirmed your house`));
             }
             await client.hsetAsync(`student:${id}`, 'locked', '1'); // redis always store as String
             client.hincrby(`student:${id}`, 'cooldown', -1); // await previous line so we ensure that user are locked when we reset cooldown            
