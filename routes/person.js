@@ -136,13 +136,14 @@ module.exports = function (agent) {
                                 return;
                             }
                         }, () => {
+                            console.log(`set ${id} house to ${newHouse}`)
                             client.hset(`student:${id}`, 'house', newHouse);
                             return res.send(Resp(true, 'OK'));
                         });
-                        return res.send(Resp(false, 'Moving to non existent house'));
                     }
-                    else
-                    return res.send(Resp(false, 'Full House'));
+                    else{
+                        return res.send(Resp(false, 'Full House'));
+                    }
                 });
             }
             catch (err) {
@@ -201,11 +202,11 @@ module.exports = function (agent) {
                     })
                 })
                 .withCredentials()
-                .then(() => {
+                .then(async function() {
                     await client.hdelAsync(`student:${id}`, 'token')
                     return res.send(Resp(true, 'OK'));
                 })
-                .catch(async (err) => {
+                .catch(async function(err)  {
                     reconnectDTNL(await setupDTNL())
                     console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err);
                     return res.send(Resp(false,'Something went wrong'));
@@ -267,7 +268,7 @@ module.exports = function (agent) {
                             .send(formData)
                             .then(() => {
                                 return res.send(Resp(true, 'OK'));
-                            }).catch(async (err) => {
+                            }).catch(async function(err) {
                                 reconnectDTNL(await setupDTNL())
                                 console.error('[REGIST] error', err);
                                 db.ref(`/houses/${house}`).transaction(house => ({...house, count: house.count-1, avail: house.avail+1}))

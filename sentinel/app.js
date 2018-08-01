@@ -4,7 +4,6 @@ var admin = require('firebase-admin');
 
 var config = require('./config')
 var firebaseKey = require('./firebaseKey.json');
-var config = require('../config');
 var sentinelFunc = require('./functions');
 var schedule = require('node-schedule');
 
@@ -12,6 +11,7 @@ const agent = request.agent()
 var houses = config.houses
 var query = sentinelFunc.query
 var forceConfirm = sentinelFunc.confirm
+var sleep = sentinelFunc.sleep
 
 admin.initializeApp({
   credential: admin.credential.cert(firebaseKey),
@@ -37,11 +37,10 @@ async function setupDTNL() {
     return Promise.resolve(agent)
   }
 }
-const port = normalizePort(process.env.PORT || '3000');
-setupDTNL().then((agent) => {
+setupDTNL().then(async (agent) => {
   var db = admin.database();
   for (var house in houses) {
-    await util.sleep(100);
+    await sleep(100);
     let h = house;
     console.log(h);
     query(agent, h).then(count => {

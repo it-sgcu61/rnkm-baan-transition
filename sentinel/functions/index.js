@@ -3,7 +3,7 @@ var config = require('../config');
 var Promise = require('bluebird');
 var query = require('./connect');
 var redis = Promise.promisifyAll(require('redis'));
-var Resp = require('./util').makeResponse;
+var Resp = util.makeResponse;
 
 module.exports =  {
     confirm:function (){
@@ -121,5 +121,6 @@ module.exports =  {
             })
         });
     },
-    query:query
+    query:query,
+    ...util
 }

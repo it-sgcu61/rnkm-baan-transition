@@ -2,6 +2,7 @@
 version: '3'
 volumes:
   node_modules:
+  node_modules-for-sentinel:
 services:
   rnkm-baan-transition:
     image: "gcr.io/skylab-184008/rnkm-baan-transition:1.0"
@@ -12,6 +13,17 @@ services:
     command: node app.js
     ports:
      - "8080:3000"
+    networks:
+     - datanaliez-cluster
+  rnkm-baan-transition-sentinel:
+    image: "gcr.io/skylab-184008/rnkm-baan-transition-sentinel:1.0"
+    volumes:
+     - ./sentinel:/backend
+     - node_modules-for-sentinel:/backend/node_modules
+    working_dir: /backend
+    command: node app.js
+    links:
+     - rnkm-baan-transition
     networks:
      - datanaliez-cluster
 networks:
