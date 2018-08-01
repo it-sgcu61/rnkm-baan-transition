@@ -3,46 +3,18 @@ version: '3'
 volumes:
   node_modules:
 services:
-  datanaliez:
-    image: "gcr.io/skylab-184008/deploy_server_img:2.4.11"
-    working_dir: /backend
-    ports:
-     - "443:3010"
-     - "80:3011"
-    links:
-     - mongo-mongodb-replicaset
-     - redis-redis-ha-master-svc
-     - mysql
-  sentinel:
-    image: "gcr.io/skylab-184008/datanaliez_sentinel_svc:1.0.1"
-    links:
-     - mongo-mongodb-replicaset
-     - redis-redis-ha-master-svc
-  mongo-mongodb-replicaset:
-    image: "gcr.io/skylab-184008/mongodb_image:1.0"
-    ports:
-     - "27017:27017"
-    # volumes:
-    #  - "./mongoDB:/data/db"
-  mysql:
-    image: "gcr.io/skylab-184008/mysql_image:1.0"
-    # volumes:
-    #  - "./MySQL:/var/lib/mysql"
-    ports:
-     - "3306:3306"
   rnkm-baan-transition:
-    image: "gcr.io/skylab-184008/rnkm-baan-transition:1.1"
-    # image: "node:9"
-    # volumes:
-    #  - ./:/backend
-    #  - node_modules:/backend/node_modules
-    # working_dir: /backend
-    # command: node app.js
+    image: "gcr.io/skylab-184008/rnkm-baan-transition:1.0"
+    volumes:
+     - ./:/backend
+     - node_modules:/backend/node_modules
+    working_dir: /backend
+    command: node app.js
     ports:
      - "8080:3000"
-  redis-redis-ha-master-svc:
-    image: "redis:3.2"
-  redis-for-testing:
-    image: "redis:3.2"
-    ports:
-     - "6379:6379"
+    networks:
+     - datanaliez-cluster
+networks:
+  datanaliez-cluster:
+    external:
+      name: datanaliez_default

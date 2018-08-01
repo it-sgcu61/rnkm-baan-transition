@@ -2,7 +2,7 @@ var config = require('../config');
 var util = require('./util');
 
 
-query = async function (agent, house) {
+var query = async function (agent, house) {
     try {
         var dtnlData = await agent.post(`http://${config.dtnlADDR}/api/v1/get/data/${config.rnkmTablename}/1`)
             .send({
@@ -20,6 +20,4 @@ query = async function (agent, house) {
         return Promise.reject(err);
     }
 }
-module.exports = {
-    query: query
-}
+module.exports = query

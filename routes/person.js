@@ -3,25 +3,29 @@ var Promise = require('bluebird');
 var redis = Promise.promisifyAll(require('redis'));
 var bcrypt = require('bcrypt');
 
-var util = require('./util'),
-    Resp = util.makeResponse;
+var setupDTNL = require('../utils/connect').setupDTNL;
+var util = require('../utils/util')
 var config = require('../config');
-var query = require('./connect').query; // query to DTNL (batched reponse)
+var query = require('../utils/connect').query; // query to DTNL (batched reponse)
 var client = redis.createClient(6379, config.redisAddr);
 var assert = require('assert');
+var admin = require('firebase-admin');
+var Resp = util.makeResponse;
+var dtnlAgent;
 client.on('error', (err) => {
     console.error('[Redis] Connection Lost, Retrying', err)
 });
 
-// var conn = mongoose.createConnection(config.mongoURL);
+const reconnectDTNL = (agent) => {
+    dtnlAgent = agent
+}
 
-// var acc = [];
-// var lock = 0, cap = 10, delay = 2000;
 
-
-module.exports = function (agent, db) {
+module.exports = function (agent) {
+    dtnlAgent = agent
     var router = express.Router();
     var login = router.post('/login', async function (req, res, next) {
+        var db = admin.database();
         try {
             var { id, tel } = req.body;
             id = id.toString();
@@ -36,7 +40,7 @@ module.exports = function (agent, db) {
                     assert.strictEqual(data.length, 1, `Query Error: More than 1 student returned. query: (${id},${tel})`)
 
                     var std = data[0];
-                    var house = std[config.houseColumn], locked = std['locked'];
+                    var house = std[config.houseColumn]
                     var token = await bcrypt.hash(Date.now().toString(16), 8);
                     var id = std[config.idColumn],
                      tel = std[config.telColumn],
@@ -54,11 +58,16 @@ module.exports = function (agent, db) {
                                         return house;
                                     }
                                 })
+                                res.send(Resp(true, 'OK', { token: token, oldHouse: house , currentHouse: house, fullname: std['dynamic/fullname'] }))
                             }
                             else {
-                                client.hmset(`student:${id}`, { token: token });
+                                if (student.locked == "0") {
+                                    client.hmset(`student:${id}`, { token: token });
+                                    res.send(Resp(true, 'OK', { token: token, oldHouse: house, currentHouse: student.house, fullname: std['dynamic/fullname'] }))
+                                }else{
+                                    res.send(Resp(false, "You've already confirmed your house", {}))
+                                }
                             }
-                            res.send(Resp(true, 'OK', { token: token }))
                         });
                 }
                 catch (err) {
@@ -69,76 +78,11 @@ module.exports = function (agent, db) {
             else { // id/tel incorrect
                 return res.send(Resp(false, 'Login Failed'));
             }
-        });
-    });
-
-    var logout = router.post('/logout', async function (req, res, next) {
-        try {
-            var { id, token } = req.body;
-            id = id.toString();
-            token = token.toString();
-        }
-        catch (err) {
-            return res.send(Resp(false, 'bad request'));
-        }
-        client.hgetAsync(`student:${id}`, 'token')
-            .then(tok => {
-                if (tok === token) {
-                    client.hdelAsync(`student:${id}`, 'token')
-                        .then(() => {
-                            return res.send(Resp(true, 'OK'));
-                        })
-                }
-                else {
-                    return res.send(Resp(false, 'Wrong Token'));
-                }
-            })
-    });
-
-    var getInfo = router.post('/getInfo', async function (req, res, next) {
-        try {
-            var { id, token } = req.body;
-            id = id.toString();
-            token = token.toString();
-        }
-        catch (err) {
-            return res.send(Resp(false, 'bad request'));
-        }
-        var user = await client.hgetallAsync(`student:${id}`);
-        if (user && user.token === token) {
-            var { id, tel } = user;
-            query(agent, { tel: tel, id: id },
-                (data) => {
-                    try {
-                        assert.strictEqual(data.length, 1, `Query Error: More than 1 student returned. query: (${id},${tel})`)
-                        if (data) {
-                            var std = data[0];
-                            try { // note that Locked/currentHouse is stored in DTNL (update as you change house!)
-                                std['currentHouse'] = user.house;
-                                std['locked'] = user.locked;
-                                return res.send(Resp(true, 'OK', std));
-                            }
-                            catch (err) {
-                                return res.send(Resp(false, 'Error'));
-                            }
-                        }
-                        else {
-                            console.warn(`[WARNING] found user:${id} in mongo but not in DNL`)
-                            return res.send(Resp(false, 'Not Found'));
-                        }
-                    }
-                    catch (err) {
-                        console.error('[GETINFO]', err);
-                        return res.send(Resp(false, 'Error'));
-                    }
-                });
-        }
-        else {
-            return res.send(Resp(false, 'Wrong Token'));
-        }
+        }, reconnectDTNL);
     });
 
     var movePerson = router.post('/movePerson', async function (req, res, next) {
+        var db = admin.database();
         try {
             var id = req.body.id.toString();
             var token = req.body.token.toString();
@@ -149,7 +93,7 @@ module.exports = function (agent, db) {
         }
         // get
         var user = await client.hgetallAsync(`student:${id}`)
-        if (user && user.token === token) {
+        if (user && user.token && user.token === token) {
             try {
                 var locked = user.locked,
                     oldHouse = user.house;
@@ -179,7 +123,7 @@ module.exports = function (agent, db) {
                         return res.send(Resp(false, 'Invalid House'));
                     }
                     else if (commited === true) { // when null --> moving to non existent house
-                        return db.ref(`/houses/${oldHouse}`).transaction((house) => {
+                        db.ref(`/houses/${oldHouse}`).transaction((house) => {
                             if (house === null) {
                                 return null;
                             }
@@ -192,12 +136,13 @@ module.exports = function (agent, db) {
                                 return;
                             }
                         }, () => {
-                                client.hset(`student:${id}`, 'house', newHouse);
-                                return res.send(Resp(true, 'OK'));
-                            });
+                            client.hset(`student:${id}`, 'house', newHouse);
+                            return res.send(Resp(true, 'OK'));
+                        });
+                        return res.send(Resp(false, 'Moving to non existent house'));
                     }
                     else
-                        return res.send(Resp(false, 'Full House'));
+                    return res.send(Resp(false, 'Full House'));
                 });
             }
             catch (err) {
@@ -209,7 +154,9 @@ module.exports = function (agent, db) {
             return res.send(Resp(false, 'Wrong Token'));
         }
     });
+
     var getHouses = router.get('/getHouses', function (req, res, next) {
+        var db = admin.database();
         return db.ref('/houses').once('value')
             .then(snapshot => {
                 return res.send(Resp(true, 'OK', snapshot.val()));
@@ -221,6 +168,7 @@ module.exports = function (agent, db) {
     })
 
     var confirmHouse = router.post('/confirmHouse', async function (req, res, next) {
+        var db = admin.database();
         try {
             var { id, token } = req.body;
             id = id.toString();
@@ -242,15 +190,6 @@ module.exports = function (agent, db) {
                     return house;
                 }
             })
-            // return res.send(Resp(true, {
-            //     modify_list: JSON.stringify({
-            //         idList: [user._id],
-            //         modifyList: [{
-            //             columnName: config.houseColumn,
-            //             value: `"${user.house}"`
-            //         }]
-            //     })
-            // }));
             return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
                 .send({
                     modify_list: JSON.stringify({
@@ -263,9 +202,11 @@ module.exports = function (agent, db) {
                 })
                 .withCredentials()
                 .then(() => {
+                    await client.hdelAsync(`student:${id}`, 'token')
                     return res.send(Resp(true, 'OK'));
                 })
-                .catch((err) => {
+                .catch(async (err) => {
+                    reconnectDTNL(await setupDTNL())
                     console.error(`[CONFIRMHOUSE] cannot change ${id}'s house to ${user.house}`,err);
                     return res.send(Resp(false,'Something went wrong'));
                 })
@@ -273,11 +214,13 @@ module.exports = function (agent, db) {
         }
         else {
             client.hdel(`student:${id}`, 'token');
-            console.warn('[MOVEPERSON] Leftover token')
+            console.warn('[CONFIRMHOUSE] Leftover token')
             return res.send(Resp(false, 'Wrong token'));
         }
     });
+
     var register = router.post('/register', function (req, res, next) {
+        var db = admin.database();
         try {
             var formData = req.body.formData; // form info as JSON, send to DTNL
             if (typeof formData !== 'object') {
@@ -305,6 +248,7 @@ module.exports = function (agent, db) {
                     }
                     else if (house.count < house.cap) {
                         house.count += 1;
+                        house.avail -= 1;
                         return house;
                     }
                     else {
@@ -319,15 +263,14 @@ module.exports = function (agent, db) {
                         return res.send(Resp(false, 'Invalid House'));
                     }
                     else if (commited) { // register success and person will be added to DB,  when null --> moving to non existent house
-                        // return res.send(Resp(true, 'OK? should sent to DTNL')) // don't forget to revert in case of error
-
                         return agent.post(`http://${config.dtnlADDR}/api/v1/form/submit/${formId}`)
                             .send(formData)
                             .then(() => {
                                 return res.send(Resp(true, 'OK'));
-                            }).catch((err) => {
+                            }).catch(async (err) => {
+                                reconnectDTNL(await setupDTNL())
                                 console.error('[REGIST] error', err);
-                                db.ref(`/houses/${house}/count`).transaction(count => count-1)
+                                db.ref(`/houses/${house}`).transaction(house => ({...house, count: house.count-1, avail: house.avail+1}))
                                 return res.send(Resp(false, 'Error, try checking the form again'));
                             });
                     }
@@ -336,7 +279,7 @@ module.exports = function (agent, db) {
                     }
                 });
             }
-        })
+        }, reconnectDTNL)
     });
 
     return router
