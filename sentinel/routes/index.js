@@ -88,6 +88,49 @@ module.exports = function (agent, db) {
             }
         });
     }
+    var fixUsedCount = function() {
+        
+        client.keysAsync('student:*')
+        .then(keys => {
+            console.log(keys);
+            var prom = []
+            for (var i=0; i<keys.length; i++){
+                let key = keys[i];
+                prom.push(client.hgetallASync(key));
+            } 
+            Promise.all(prom)
+            .then(data => {
+                var count = {};
+                data.forEach(user => {
+                    if (+user.locked !== 1){
+                        count[user.house] = (count[user.house] | 0) + 1; 
+                    }
+                });
+                console.log(count);
+                return Promise.resolve(count);
+            })
+            .then(count => {
+                for (var h in count) {
+                    db.ref(`/houses/${user.house}`).transaction(house => {
+                        if (house === null)
+                            return null;
+                        else if (house) {
+                            house.avail = (house.avail | 0) + count[h];
+                            house.used = (house.used | 0) + count[h];
+                            return house;
+                        }
+                    })
+                }
+            })
+            .catch(err => {
+                console.error('[FixUsedCount] Something went wrong', err);
+            })
+        }); 
+    }
+    router.get('/fixCount', async function(req, res, next){
+        fixUsedCount();
+        res.send(Resp(true, 'OK'));
+    })
     router.get('/initFirebase', async function (req, res, next) {
         for (var house in houses) {
             await util.sleep(500);
