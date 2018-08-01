@@ -97,10 +97,14 @@ module.exports = function (agent) {
             try {
                 var locked = user.locked,
                     oldHouse = user.house;
-
-                if (+locked === 1)
+                if (+locked === 1){
                     return res.send(Resp(false, "You've already confirmed your house"));
-
+                }
+                var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
+                if (cd >= 1){
+                    client.hincrby(`student:${id}`, 'cooldown', -1);
+                    return res.send(Resp(false, 'Please wait until last operation complete'));
+                }
                 // Move !
                 return db.ref(`/houses/${newHouse}`).transaction((house) => {
                     if (house === null) {
@@ -117,9 +121,11 @@ module.exports = function (agent) {
                 }, (err, commited, snapshot) => {
                     if (err) {
                         console.error('[MOVEPERSON] firebase error', err);
+                        client.hincrby(`student:${id}`, 'cooldown', -1);
                         return res.send(Resp(false, 'Error'));
                     }
                     else if (snapshot.val() === null) {
+                        client.hincrby(`student:${id}`, 'cooldown', -1);                        
                         return res.send(Resp(false, 'Invalid House'));
                     }
                     else if (commited === true) { // when null --> moving to non existent house
@@ -137,17 +143,20 @@ module.exports = function (agent) {
                             }
                         }, () => {
                             console.log(`set ${id} house to ${newHouse}`)
-                            client.hset(`student:${id}`, 'house', newHouse);
+                            await client.hsetAsync(`student:${id}`, 'house', newHouse);
+                            client.hincrby(`student:${id}`, 'cooldown', -1);
                             return res.send(Resp(true, 'OK'));
                         });
                     }
                     else{
+                        client.hincrby(`student:${id}`, 'cooldown', -1);
                         return res.send(Resp(false, 'Full House'));
                     }
                 });
             }
             catch (err) {
                 console.error('[GETINFO]', err);
+                client.hincrby(`student:${id}`, 'cooldown', -1);
                 return res.send(Resp(false, 'Error'));
             }
         }
@@ -180,8 +189,17 @@ module.exports = function (agent) {
         }
 
         var user = await client.hgetallAsync(`student:${id}`);
-        if (user.token === token && +user.locked !== 1) {
-            client.hset(`student:${id}`, 'locked', '1'); // redis always store as String
+        if (user.token === token) {
+            if (+user.locked === 1){
+                return res.send(Resp(false, `You've already confirmed your house`));
+            }
+            var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
+            if (cd >= 1){
+                client.hincrby(`student:${id}`, 'cooldown', -1);
+                return res.send(Resp(false, 'Please wait until last operation complete'));
+            }
+            await client.hsetAsync(`student:${id}`, 'locked', '1'); // redis always store as String
+            client.hincrby(`student:${id}`, 'cooldown', -1); // await previous line so we ensure that user are locked when we reset cooldown            
             db.ref(`/houses/${user.house}`).transaction(house => {
                 if (house === null)
                     return null;
