@@ -63,7 +63,7 @@ module.exports = function (agent) {
                             else {
                                 if (student.locked == "0") {
                                     client.hmset(`student:${id}`, { token: token });
-                                    res.send(Resp(true, 'OK', { token: token, oldHouse: house, currentHouse: student.house, fullname: std['dynamic/fullname'] }))
+                                    res.send(Resp(true, 'OK', { token: token, oldHouse: house, currentHouse: student.house, fullname: std['dynamic/fullname'], expireTime: process.env.endTime }))
                                 }else{
                                     res.send(Resp(false, "You've already confirmed your house", {}))
                                 }
@@ -98,7 +98,7 @@ module.exports = function (agent) {
                 var locked = user.locked,
                     oldHouse = user.house;
                 var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
-                if (cd >= 1){
+                if (cd > 1){
                     client.hincrby(`student:${id}`, 'cooldown', -1);
                     return res.send(Resp(false, 'Please wait until last operation complete'));
                 }
@@ -126,7 +126,7 @@ module.exports = function (agent) {
                         return res.send(Resp(false, 'Error'));
                     }
                     else if (snapshot.val() === null) {
-                        client.hincrby(`student:${id}`, 'cooldown', -1);                        
+                        client.hincrby(`student:${id}`, 'cooldown', -1);
                         return res.send(Resp(false, 'Invalid House'));
                     }
                     else if (commited === true) { // when null --> moving to non existent house
@@ -142,7 +142,7 @@ module.exports = function (agent) {
                             else {
                                 return;
                             }
-                        }, () => {
+                        }, async function(){
                             console.log(`set ${id} house to ${newHouse}`)
                             await client.hsetAsync(`student:${id}`, 'house', newHouse);
                             client.hincrby(`student:${id}`, 'cooldown', -1);
@@ -192,7 +192,7 @@ module.exports = function (agent) {
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
-            if (cd >= 1){
+            if (cd > 1){
                 client.hincrby(`student:${id}`, 'cooldown', -1);
                 return res.send(Resp(false, 'Please wait until last operation complete'));
             }
@@ -201,7 +201,7 @@ module.exports = function (agent) {
                 return res.send(Resp(false, `You've already confirmed your house`));
             }
             await client.hsetAsync(`student:${id}`, 'locked', '1'); // redis always store as String
-            client.hincrby(`student:${id}`, 'cooldown', -1); // await previous line so we ensure that user are locked when we reset cooldown            
+            client.hincrby(`student:${id}`, 'cooldown', -1); // await previous line so we ensure that user are locked when we reset cooldown
             db.ref(`/houses/${user.house}`).transaction(house => {
                 if (house === null)
                     return null;
@@ -218,6 +218,9 @@ module.exports = function (agent) {
                         modifyList: [{
                             columnName: config.houseColumn,
                             value: `'${user.house}'`
+                        },{
+                            columnName: "isTransfered",
+                            value: "true"
                         }]
                     })
                 })

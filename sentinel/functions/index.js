@@ -1,12 +1,16 @@
+var request = require('superagent');
 var util = require('./util');
 var config = require('../config');
 var Promise = require('bluebird');
 var query = require('./connect');
 var redis = Promise.promisifyAll(require('redis'));
+
 var Resp = util.makeResponse;
+const agent = request.agent()
 
 module.exports =  {
     confirm:function (){
+        console.log("AUTOMATE CONFIRMATION...")
         var client = redis.createClient(6379, config.redisAddr);
         client.on('error', (err) => {
             console.error('[Redis] Connection Lost, Retrying', err)

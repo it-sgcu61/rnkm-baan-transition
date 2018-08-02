@@ -68,5 +68,7 @@ setupDTNL().then(async (agent) => {
   }
 }).catch((error) => { throw error; process.exit(1) })
 console.log("firebase db setup completed.")
-var j = schedule.scheduleJob("0 11 4 8 2018", forceConfirm);
-var j2 = schedule.scheduleJob("30 12 4 8 2018", forceConfirm);
+var validEndTime = new Date(process.env.endTime)
+schedule.scheduleJob(validEndTime, function () {
+  forceConfirm()
+});

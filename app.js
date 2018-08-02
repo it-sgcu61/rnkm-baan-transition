@@ -78,6 +78,16 @@ setupDTNL().then((agent) => {
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
 
+  app.use(function (req, res, next) {
+    var currentTime = new Date()
+    var validStartTime = new Date(process.env.startTime)
+    var validEndTime = new Date(process.env.endTime)
+    if ( /register/.test(req.path) || (validStartTime.getTime() < currentTime.getTime() && currentTime.getTime() < validEndTime.getTime())){
+      next();
+    }else{
+      next(createError(404));
+    }
+  });
   app.use('/', personRouter(agent));
 
   app.use(function (req, res, next) {
