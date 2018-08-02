@@ -306,7 +306,7 @@ module.exports = function (agent) {
         }, reconnectDTNL)
     });
 
-    var checkStatus = router.get('/checkStatus', function (req, res, next) {
+    var checkStatus = router.get('/checkStatus', async function (req, res, next) {
         var db = admin.database();
         var dtnl = await agent.get(`http://${config.dtnlADDR}/api/v1/loginStatus`).withCredentials();
         var fb = await db.ref('.info/connected').once('value');
