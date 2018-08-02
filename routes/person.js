@@ -306,6 +306,15 @@ module.exports = function (agent) {
         }, reconnectDTNL)
     });
 
+    var checkStatus = router.get('/checkStatus', function (req, res, next) {
+        var db = admin.database();
+        var dtnl = await agent.post(`http://${config.dtnlADDR}/api/v1/loginStatus`).withCredentials();
+        var fb = await db.ref('.info/connected').once('value');
+        if (db.val() === true && dtnl.user === config.dtnlUser && client.connected){
+            return res.send('true');
+        }
+        return res.send('false');
+    });
     return router
 
 }
