@@ -1,0 +1,51 @@
+config:
+  target: 'https://datanaliez.com'
+  http:
+    tls:
+      rejectUnauthorized: false
+      timeout: 10
+    maxSockets: 2
+  phases:
+    - 
+      duration: 1
+      arrivalCount: 30
+      name: "warming up"
+  processor: './DTNL.js'
+  # payload:
+  #   path: "dtnlUsers.csv"
+  #   fields:
+  #     - "id"
+scenarios:
+  - flow:
+    - get:
+        url: "/api/v1/greeting"
+        capture:
+          json: "$.challenge"
+          as: "challenge"
+    - log: "[LOGIN] Greeting -> {{ challenge }}"
+
+    - post:
+        url: "/api/v1/login"
+        beforeRequest: "genPass"
+        json: #wtf
+          username: "{{ username }}"
+          password: "{{ password }}"
+        afterResponse: "logRes"
+        capture:
+          json: "$"
+          as: "res"
+    - log: "{{ res }}"
+    - get:
+        url: "/api/v1/get/tableList"
+        capture:
+          json: "$"
+          as: "res"
+    - log: "{{ res }}"
+    - loop:
+      - post:
+          url: "/api/v1/edit/editCheckedData/RNKM_TEST"
+          beforeRequest: "makeRequest"
+          json: 
+            modify_list: "{{ modify_list }}"
+          afterResponse: "logRes"
+      count: 200

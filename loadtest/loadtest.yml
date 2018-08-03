@@ -7,23 +7,16 @@ config:
     maxSockets: 2
   phases:
     - 
-      duration: 3
-      arrivalRate: 1
+      duration: 2
+      arrivalCount: 20
       name: "warming up"
-    # - 
-    #   duration: 200
-    #   arrivalRate: 70
-    #   name: "Full load"
-    # - 
-    #   duration: 50
-    #   arrivalRate: 20
-    #   name: "Cooldown"
   processor: './randomize.js'
   payload:
     path: "users.csv"
     fields:
       - "tel"
       - "id"
+    order: "sequence"
 scenarios:
   - flow:
     - post:
@@ -44,4 +37,13 @@ scenarios:
             token: "{{token}}"
             house: "{{house}}"
           afterResponse: "logRes"
-        count: 10
+      count: 15
+    # - post:
+    #     url: "/confirmHouse"
+    #     form: 
+    #       id: "{{id}}"
+    #       token: "{{token}}"
+    #     capture:
+    #       json: "$.message"
+    #       as: "msg"
+    - log: "[Confirm] {{id}} -> {{msg}}"
