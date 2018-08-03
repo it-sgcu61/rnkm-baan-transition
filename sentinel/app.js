@@ -66,9 +66,9 @@ setupDTNL().then(async (agent) => {
         console.log("DTNL fallback", err);
     })
   }
+  console.log("firebase db setup completed.")
+  var validEndTime = new Date(process.env.endTime)
+  schedule.scheduleJob(validEndTime, function () {
+    forceConfirm(agent)
+  });
 }).catch((error) => { throw error; process.exit(1) })
-console.log("firebase db setup completed.")
-var validEndTime = new Date(process.env.endTime)
-schedule.scheduleJob(validEndTime, function () {
-  forceConfirm()
-});
