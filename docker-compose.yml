@@ -20,8 +20,8 @@ services:
       - redisAddr=redis-redis-ha-master-svc
       - formID_TH=a2d512a69efebe44cf6749ff37e235be01d066e9a1fa2b7caba34b5d2b309fab
       - formID_EN=2f1a1b950af77e04c2294ba116af1b9bfefe53aa73eed282d32dc2d643f7b333
-      - startTime=Thu Aug 02 2018 08:00:00 GMT+0700 (Indochina Time)
-      - endTime=Thu Aug 02 2018 08:45:00 GMT+0700 (Indochina Time)
+      - startTime=Thu Aug 03 2018 15:00:00 GMT+0700 (Indochina Time)
+      - endTime=Thu Aug 03 2018 23:50:00 GMT+0700 (Indochina Time)
   rnkm-baan-transition-sentinel:
     image: "gcr.io/skylab-184008/rnkm-baan-transition-sentinel:1.0"
     volumes:
@@ -30,7 +30,7 @@ services:
     working_dir: /backend
     command: node app.js
     environment:
-      - endTime=Thu Aug 02 2018 08:45:00 GMT+0700 (Indochina Time)
+      - endTime=Thu Aug 03 2018 23:50:00 GMT+0700 (Indochina Time)
       - dtnlAddr=datanaliez:3011
       - redisAddr=redis-redis-ha-master-svc
     links:

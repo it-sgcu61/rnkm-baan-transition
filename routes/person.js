@@ -2,6 +2,7 @@ var express = require('express');
 var Promise = require('bluebird');
 var redis = Promise.promisifyAll(require('redis'));
 var bcrypt = require('bcrypt');
+var createError = require('http-errors');
 
 var setupDTNL = require('../utils/connect').setupDTNL;
 var util = require('../utils/util')
@@ -58,7 +59,7 @@ module.exports = function (agent) {
                                         return house;
                                     }
                                 })
-                                res.send(Resp(true, 'OK', { token: token, oldHouse: house , currentHouse: house, fullname: std['dynamic/fullname'] }))
+                                res.send(Resp(true, 'OK', { token: token, oldHouse: house , currentHouse: house, fullname: std['dynamic/fullname'], expireTime: process.env.endTime }))
                             }
                             else {
                                 if (student.locked == "0") {
@@ -310,10 +311,13 @@ module.exports = function (agent) {
         var db = admin.database();
         var dtnl = await agent.get(`http://${config.dtnlADDR}/api/v1/loginStatus`).withCredentials();
         var fb = await db.ref('.info/connected').once('value');
-        if (db.val() === true && dtnl.user === config.dtnlUser && client.connected){
-            return res.send('true');
+        console.log("fb status", fb.val())
+        console.log("dtnl status", dtnl.body.username)
+        console.log("redis status", client.connected)
+        if (fb.val() === true && dtnl.body.username === config.dtnlUser && client.connected){
+            return res.send({result:"OK"})
         }
-        return res.send('false');
+        next(createError(500))
     });
     return router
 

@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rnkm2018-baan-transition
+  labels:
+    app: rnkm2018-baan-transition
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 443
+    targetPort: 3000
+  selector:
+    app: rnkm2018-baan-transition-worker
+  externalTrafficPolicy: Local
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: rnkm2018-baan-transition-worker
+  labels:
+    app: rnkm2018-baan-transition-worker
+    configmap-version: 1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rnkm2018-baan-transition-worker
+  template:
+    metadata:
+      labels:
+        app: rnkm2018-baan-transition-worker
+    spec:
+      containers:
+      - name: rnkm2018-baan-transition-worker
+        image: gcr.io/skylab-184008/rnkm-baan-transition:1.5
+        imagePullPolicy: Always
+        envFrom:
+         - configMapRef:
+             name: rnkm-baan-transition
+        # livenessProbe:
+        #   httpGet:
+        #     path: /api/chkStatus
+        #     port: 3000
+        #     scheme: HTTPS
+        #   initialDelaySeconds: 3
+        #   periodSeconds: 20
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: rnkm2018-baan-transition-sentinel
+  labels:
+    app: rnkm2018-baan-transition-sentinel
+    configmap-version: 1
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rnkm2018-baan-transition-sentinel
+  template:
+    metadata:
+      labels:
+        app: rnkm2018-baan-transition-sentinel
+    spec:
+      containers:
+      - name: rnkm2018-baan-transition-sentinel
+        image: gcr.io/skylab-184008/rnkm-baan-transition-sentinel:1.5
+        imagePullPolicy: Always
+        envFrom:
+         - configMapRef:
+             name: rnkm-baan-transition-sentinel
