@@ -99,8 +99,9 @@ module.exports = function (agent) {
                 var locked = user.locked,
                     oldHouse = user.house;
                 var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
-                if (cd > 1){
-                    client.hincrby(`student:${id}`, 'cooldown', -1);
+                if (cd !== 1){
+                    if (cd > 1)
+                        client.hincrby(`student:${id}`, 'cooldown', -1);
                     return res.send(Resp(false, 'Please wait until last operation complete'));
                 }
                 if (+locked === 1){
@@ -194,8 +195,9 @@ module.exports = function (agent) {
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
-            if (cd > 1){
-                client.hincrby(`student:${id}`, 'cooldown', -1);
+            if (cd !== 1){
+                if (cd > 1)
+                    client.hincrby(`student:${id}`, 'cooldown', -1);
                 return res.send(Resp(false, 'Please wait until last operation complete'));
             }
             if (+user.locked === 1){
@@ -324,6 +326,40 @@ module.exports = function (agent) {
         }
         next(createError(500))
     });
-    return router
 
+    var getInfo = router.post('/getInfo', function (req, res, next) {
+        try {
+            var {id, tel} = req.body;
+            id = id.toString();
+            tel = tel.toString();
+        }
+        catch (err) {
+            return res.send(Resp(false, 'bad request'));
+        }
+        query(agent, req.body, async (data) => {
+            if (data) {
+                try {
+                    assert.strictEqual(data.length, 1, `Query Error: More than 1 student returned. query: (${id},${tel})`)
+                    var std = data[0];
+                    return res.send(Resp(true, 'OK', {
+                        oldHouse: std['dynamic/realHouseURL'],
+                        newHouse: std[config.houseColumn],
+                        fullname: std['dynamic/fullname'],
+                        id: std[config.idColumn],
+                        tel: std[config.houseColumn],
+                        isTransferred: std['isTransferred']
+                    }));
+                }
+                catch (err) {
+                    console.error('ERROR', err);
+                    return res.send(Resp(false, 'Error'));
+                }
+            }
+            else { // id/tel incorrect
+                return res.send(Resp(false, 'No user match'));
+            }
+        }, reconnectDTNL);
+    });
+    return router
+    
 }
