@@ -108,6 +108,7 @@ module.exports = function (agent) {
                     return res.send(Resp(false, "You've already confirmed your house"));
                 }
                 // Move !
+				client.hincrbyAsync(`student:${id}`, 'movedCount', 1);//JUST INCREASE IT
                 return db.ref(`/houses/${newHouse}`).transaction((house) => {
                     if (house === null) {
                         return null;
@@ -212,6 +213,7 @@ module.exports = function (agent) {
                     return house;
                 }
             })
+			var movedCount = await client.hincrbyAsync(`student:${id}`, 'movedCount', 0);
             return agent.post(`http://${config.dtnlADDR}/api/v1/edit/editCheckedData/${config.rnkmTablename}`)
                 .send({
                     modify_list: JSON.stringify({
@@ -222,6 +224,9 @@ module.exports = function (agent) {
                         },{
                             columnName: "isTransfered",
                             value: "true"
+                        },{
+                            columnName: "movedCount",
+                            value: `'${movedCount}'`
                         }]
                     })
                 })
