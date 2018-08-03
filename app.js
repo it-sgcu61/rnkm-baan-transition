@@ -2,11 +2,12 @@ var createError = require('http-errors');
 var fs = require('fs');
 var express = require('express');
 var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+var morgan = require('morgan');
 var https = require('https');
 var path = require('path');
 var cors = require('cors')
 var admin = require('firebase-admin');
+const Influx = require('influx')
 
 const personRouter = require('./routes/person');
 var firebaseKey = require('./firebaseKey.json');
@@ -21,6 +22,25 @@ var options = {
   key: fs.readFileSync('./server.key'),
   cert: fs.readFileSync('./server.crt')
 }
+
+const loggerInflux = new Influx.InfluxDB({
+  host: '127.0.0.1',
+  port:8086,
+  database: 'TRANSITION-API-LOG',
+  username: 'admin',
+  password: 'en0n1gm0us',
+  schema: [
+    {
+      measurement: 'LOG',
+      fields: {
+        ip: Influx.FieldType.STRING,
+        status: Influx.FieldType.INTEGER,
+        latency: Influx.FieldType.FLOAT,
+      },
+      tags: ['url','ip','status']
+    }
+  ]
+})
 
 admin.initializeApp({
   credential: admin.credential.cert(firebaseKey),
@@ -73,7 +93,16 @@ const port = normalizePort(process.env.PORT || '3000');
 
 setupDTNL().then((agent) => {
   app.use(cors())
-  app.use(logger('dev'));
+  app.use(morgan('dev'));
+  app.use(morgan(function (tokens, req, res) {
+    loggerInflux.writePoints([
+      {
+        measurement: 'LOG',
+        tags: { url: tokens.url(req, res), ip : tokens["remote-addr"](req, res), status: tokens.status(req, res)},
+        fields: { ip : tokens["remote-addr"](req, res), status: tokens.status(req, res), latency: tokens['response-time'](req, res) },
+      }
+    ])
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use(cookieParser());
