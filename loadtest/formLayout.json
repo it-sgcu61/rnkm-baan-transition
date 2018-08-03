@@ -1,0 +1,214 @@
+{
+    "answered": [],
+    "closeOn": {},
+    "desc": "กรุณากรอกข้อมูลด้านหลังนี้ให้ตรงตามความเป็นจริง และครบถ้วน เพื่อประโยชน์ของท่านเอง",
+    "disabled": false,
+    "fieldList": [
+        {
+            "desc": "",
+            "label": "บ้านที่ต้องกาารอันดับ",
+            "name": "head/realHouseURL",
+            "option": [
+                "a-aum",
+                "abnormal",
+                "achuan",
+                "agape",
+                "buchayun",
+                "buem",
+                "dork",
+                "duidui",
+                "dung",
+                "fyo",
+                "indiana",
+                "indy",
+                "jadson",
+                "jo",
+                "jodeh",
+                "khunnoo",
+                "kids",
+                "koh",
+                "koom",
+                "laijai",
+                "mheenoi",
+                "nhai",
+                "pak-tak-agard",
+                "phee",
+                "por",
+                "preaw",
+                "rang",
+                "rhoy",
+                "seiyw",
+                "sod",
+                "soeitee",
+                "tem",
+                "wang",
+                "wanted",
+                "work",
+                "yim"
+            ],
+            "required": true,
+            "type": "choice"
+        },
+        {
+            "desc": "",
+            "label": "คำนำหน้าชื่อ",
+            "name": "dynamic/nameprefix",
+            "option": [
+                "นาย - Mr.",
+                "นางสาว - Miss."
+            ],
+            "required": true,
+            "type": "choice"
+        },
+        {
+            "desc": "เช่น รับน้อง ก้าวใหม่",
+            "label": "ชื่อ-นามสกุล (ไทย)",
+            "name": "dynamic/fullname",
+            "required": true,
+            "type": "string",
+            "validate": "\\s+"
+        },
+        {
+            "desc": "เช่น ต้อม, ปู",
+            "label": "ชื่อเล่น",
+            "name": "dynamic/nickname",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "",
+            "label": "คณะ",
+            "name": "dynamic/faculty",
+            "option": [
+                "ครุศาสตร์ - Faculty of Education",
+                "จิตวิทยา - Faculty of Psychology",
+                "ทันตแพทยศาสตร์ - Faculty of Dentistry",
+                "นิติศาสตร์ - Faculty of Law",
+                "นิเทศศาสตร์ - Faculty of Communication Arts",
+                "พยาบาลศาสตร์ - Faculty of Nursing",
+                "พาณิชยศาสตร์และการบัญชี - Faculty of Commerce and Accountancy",
+                "แพทยศาสตร์ - Faculty of Medicine",
+                "เภสัชศาสตร์ - Faculty of Pharmaceutical Sciences",
+                "รัฐศาสตร์ - Faculty of Political Science",
+                "วิทยาศาสตร์ - Faculty of Science",
+                "วิทยาศาสตร์การกีฬา - Faculty of Sports Science",
+                "วิศวกรรมศาสตร์ - Faculty of Engineering",
+                "ศิลปกรรมศาสตร์ - Faculty of Fine and Applied Arts",
+                "เศรษฐศาสตร์ - Faculty of Economics",
+                "สถาปัตยกรรมศาสตร์ - Faculty of Architecture",
+                "สหเวชศาสตร์ - Faculty of Allied Health Sciences",
+                "สัตวแพทยศาสตร์ - Faculty of Veterinary Science",
+                "อักษรศาสตร์ - Faculty of Arts",
+                "สำนักวิชาทรัพยากรการเกษตร - School of Agricultural Resources"
+            ],
+            "required": true,
+            "type": "choice"
+        },
+        {
+            "desc": "เลขบัตรประชาชนทั้ง 13 หลัก",
+            "label": "เลขบัตรประจำตัวประชาชน",
+            "name": "dynamic/nationalID",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "เช่น พุทธ/คริสต์/อิสลาม หรือ -",
+            "label": "ศาสนา",
+            "name": "dynamic/religion",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "0xx-xxx-xxxx (หากไม่มี ให้ใส่ 080-000-0000)",
+            "label": "หมายเลขโทรศัพท์",
+            "name": "dynamic/tel",
+            "required": true,
+            "type": "string",
+            "validate": "^0[689][0-9]-[0-9]{3}-[0-9]{4}$"
+        },
+        {
+            "desc": "",
+            "label": "LineID",
+            "name": "dynamic/lineID",
+            "required": false,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "",
+            "label": "Facebook",
+            "name": "dynamic/facebook",
+            "required": false,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "เราจะติดต่อไปยังหมายเลขนี้ในกรณีเกิดเหตุการณ์ฉุกเฉินขึ้น",
+            "label": "หมายเลขโทรศัพท์ฉุกเฉิน",
+            "name": "dynamic/emergency_tel",
+            "required": true,
+            "type": "string",
+            "validate": "^0[689][0-9]-[0-9]{3}-[0-9]{4}$"
+        },
+        {
+            "desc": "เช่น มารดา/บิดา ฯลฯ",
+            "label": "ความเกี่ยวข้องของเจ้าของหมายเลขโทรศัพท์ฉุกเฉิน",
+            "name": "dynamic/emergency_tel_relation",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "ถ้าไม่มีใส่ \"-\"",
+            "label": "โรคประจำตัว",
+            "name": "dynamic/congenital_disease",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "ถ้าไม่มีใส่ \"-\"",
+            "label": "ยาที่ใช้อยู่เป็นประจำ",
+            "name": "dynamic/regularDrug",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "ถ้าไม่มีใส่ \"-\"",
+            "label": "ยาที่แพ้",
+            "name": "dynamic/drugAllergy",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "เช่น ผู้พิการทางสายตา, ภาวะซึมเศร้า, hyperventilation, เบาหวาน (ถ้าไม่มีใส่ \"-\")",
+            "label": "ความผิดปกติทางร่างกาย",
+            "name": "dynamic/disorders",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        },
+        {
+            "desc": "อาหารที่ไม่สามารถรับประทานได้ เนื่องจากแพ้ หรือเกี่ยวข้องกับศาสนา (เช่น เป็นอิสลาม ฯลฯ)",
+            "label": "อาหารที่แพ้",
+            "name": "dynamic/foodAllergies",
+            "required": true,
+            "type": "string",
+            "validate": ""
+        }
+    ],
+    "formID": "89fd1f74978c008d998efe6240fc38282f53c25c4098335bf33b351c9d80a7af",
+    "registExceed": false,
+    "targetCollection": "RNKM_TEST",
+    "title": "rnkm_regist_form_TH_lang",
+    "visited": [],
+    "autoClose": {
+        "includeDuration": false,
+        "includeRegistLimit": false
+    }
+}
