@@ -1,0 +1,48 @@
+config:
+  target: 'https://5xhgfqhpgik599bg2d9v.tk'
+  http:
+    tls:
+      rejectUnauthorized: false
+      timeout: 10
+    maxSockets: 2
+  phases:
+    - 
+      duration: 3
+      arrivalRate: 1
+      name: "warming up"
+    # - 
+    #   duration: 200
+    #   arrivalRate: 70
+    #   name: "Full load"
+    # - 
+    #   duration: 50
+    #   arrivalRate: 20
+    #   name: "Cooldown"
+  processor: './randomize.js'
+  payload:
+    path: "users.csv"
+    fields:
+      - "tel"
+      - "id"
+scenarios:
+  - flow:
+    - post:
+        url: "/login"
+        form: 
+          id: "{{id}}"
+          tel: "{{tel}}"
+        capture:
+          json: "$.data.token"
+          as: "token"
+    - log: "[LOGIN] {{id}}:{{tel}} -> {{token}}"
+    - post:
+        url: "/movePerson"
+        beforeRequest: "randomHouse"
+        form:
+          id: "{{id}}"
+          token: "{{token}}"
+          house: "{{house}}"
+        capture:
+          json: "$.message"
+          as: "msg"
+    - log: "[MOVE] {{id}} -> {{house}} : {{msg}}"
