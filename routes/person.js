@@ -351,7 +351,7 @@ module.exports = function (agent) {
                 }
             }
             else { // id/tel incorrect
-                return res.send(Resp(false, 'No user match'));
+                return res.send(Resp(false, 'No user matched'));
             }
         }, reconnectDTNL);
     });
