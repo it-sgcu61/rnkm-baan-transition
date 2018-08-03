@@ -8,6 +8,7 @@ var util = require('../utils/util');
 
 randomHouse = async function(requestParams, context, ee, next) {
     context.vars['house'] = houses[randInt(n)];
+    context.vars.start = Date.now();
     var {id, token} = context.vars;
     requestParams = context.vars;
     await util.sleep(randInt(3000));
@@ -15,7 +16,9 @@ randomHouse = async function(requestParams, context, ee, next) {
 }
 logRes = function (requestParams, response, context, ee, next) {
     var {id, tel, house} = requestParams;
-    console.log(`${id} moving to ${house} is ${response.success}`);
+    context.vars.end = Date.now();
+    var {end, start} = context.vars;
+    console.log(`${end-start}ms ${id} moving to ${house} is ${response.success}`);
     return next();
 }
 

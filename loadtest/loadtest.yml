@@ -35,14 +35,13 @@ scenarios:
           json: "$.data.token"
           as: "token"
     - log: "[LOGIN] {{id}}:{{tel}} -> {{token}}"
-    - post:
-        url: "/movePerson"
-        beforeRequest: "randomHouse"
-        form:
-          id: "{{id}}"
-          token: "{{token}}"
-          house: "{{house}}"
-        capture:
-          json: "$.message"
-          as: "msg"
-    - log: "[MOVE] {{id}} -> {{house}} : {{msg}}"
+    - loop:
+      - post:
+          url: "/movePerson"
+          beforeRequest: "randomHouse"
+          form:
+            id: "{{id}}"
+            token: "{{token}}"
+            house: "{{house}}"
+          afterResponse: "logRes"
+        count: 10
