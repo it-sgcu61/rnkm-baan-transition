@@ -99,8 +99,9 @@ module.exports = function (agent) {
                 var locked = user.locked,
                     oldHouse = user.house;
                 var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
-                if (cd > 1){
-                    client.hincrby(`student:${id}`, 'cooldown', -1);
+                if (cd !== 1){
+                    if (cd > 1)
+                        client.hincrby(`student:${id}`, 'cooldown', -1);
                     return res.send(Resp(false, 'Please wait until last operation complete'));
                 }
                 if (+locked === 1){
@@ -193,8 +194,9 @@ module.exports = function (agent) {
         var user = await client.hgetallAsync(`student:${id}`);
         if (user.token === token) {
             var cd = await client.hincrbyAsync(`student:${id}`, 'cooldown', 1);
-            if (cd > 1){
-                client.hincrby(`student:${id}`, 'cooldown', -1);
+            if (cd !== 1){
+                if (cd > 1)
+                    client.hincrby(`student:${id}`, 'cooldown', -1);
                 return res.send(Resp(false, 'Please wait until last operation complete'));
             }
             if (+user.locked === 1){
