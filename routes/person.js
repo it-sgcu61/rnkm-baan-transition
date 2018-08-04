@@ -266,7 +266,7 @@ module.exports = function (agent) {
             var tel = formData[config.telColumn].toString();
             var id = formData[config.idColumn].toString();
             var house = formData[config.houseColumn].toString();
-            var lang = req.body.lang;
+            var lang = req.body.lang || 'TH';
             var formId = config.formId[lang].toString();
         }
         catch (err) {
