@@ -1,3 +1,5 @@
+# please use new branch instead of master
+
 # rnkm-baan-transition
 Baan transition system with NodeJS x Firebase x DatanaliEZ
 
