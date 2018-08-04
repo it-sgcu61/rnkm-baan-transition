@@ -256,7 +256,7 @@ module.exports = function (agent) {
     });
 
     var register = router.post('/register', function (req, res, next) {
-        console.debug('[REGIST]', {...req.body});
+        console.debug('[REGIST]', req.body);
         var db = admin.database();
         try {
             var formData = req.body.formData; // form info as JSON, send to DTNL
