@@ -274,14 +274,14 @@ module.exports = function (agent) {
                 return res.send(Resp(false, `You've already registered`));
             }
             else {
-                return db.ref(`/houses/${house}`).transaction((house) => {
-                    if (house === null) {
+                return db.ref(`/houses/${house}`).transaction((houseData) => {
+                    if (houseData === null) {
                         return null;
                     }
-                    else if (house.count < house.cap) {
-                        house.count += 1;
-                        house.avail -= 1;
-                        return house;
+                    else if (houseData.count < houseData.cap) {
+                        houseData.count += 1;
+                        houseData.avail -= 1;
+                        return houseData;
                     }
                     else {
                         return;
@@ -301,7 +301,7 @@ module.exports = function (agent) {
                                 return res.send(Resp(true, 'OK'));
                             }).catch(async function(err) {
                                 reconnectDTNL(await setupDTNL())
-                                console.error('[REGIST] error', err);
+                                console.error('[REGIST] error', err, formData);
                                 db.ref(`/houses/${house}`).transaction(house => ({...house, count: house.count-1, avail: house.avail+1}))
                                 return res.send(Resp(false, 'Error, try checking the form again'));
                             });
