@@ -263,7 +263,7 @@ module.exports = function (agent) {
             var house = formData[config.houseColumn].toString();
             var lang = req.body.lang;
             var formId = config.formId[lang].toString();
-
+            console.debug('[REGIST]', formData, lang);
         }
         catch (err) {
             console.error('[REGISTER] Error',err);
