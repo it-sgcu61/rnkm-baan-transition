@@ -26,6 +26,7 @@ module.exports = function (agent) {
     dtnlAgent = agent
     var router = express.Router();
     var login = router.post('/login', async function (req, res, next) {
+        console.debug('[LOGIN]',req.body);
         var db = admin.database();
         try {
             var { id, tel } = req.body;
@@ -83,6 +84,7 @@ module.exports = function (agent) {
     });
 
     var movePerson = router.post('/movePerson', async function (req, res, next) {
+        console.debug('[movePerson]',  req.body);
         var db = admin.database();
         try {
             var id = req.body.id.toString();
@@ -170,6 +172,7 @@ module.exports = function (agent) {
     });
 
     var getHouses = router.get('/getHouses', function (req, res, next) {
+        console.debug('[getHouse]',req.body);        
         var db = admin.database();
         return db.ref('/houses').once('value')
             .then(snapshot => {
@@ -182,6 +185,7 @@ module.exports = function (agent) {
     })
 
     var confirmHouse = router.post('/confirmHouse', async function (req, res, next) {
+        console.debug('[confirmHouse]', req.body);
         var db = admin.database();
         try {
             var { id, token } = req.body;
@@ -252,6 +256,7 @@ module.exports = function (agent) {
     });
 
     var register = router.post('/register', function (req, res, next) {
+        console.debug('[REGIST]', {...req.body});
         var db = admin.database();
         try {
             var formData = req.body.formData; // form info as JSON, send to DTNL
@@ -263,7 +268,6 @@ module.exports = function (agent) {
             var house = formData[config.houseColumn].toString();
             var lang = req.body.lang;
             var formId = config.formId[lang].toString();
-            console.debug('[REGIST]', formData, lang);
         }
         catch (err) {
             console.error('[REGISTER] Error',err);
@@ -328,6 +332,7 @@ module.exports = function (agent) {
     });
 
     var getInfo = router.post('/getInfo', function (req, res, next) {
+        console.log('[getInfo]', req.body);
         try {
             var {id, tel} = req.body;
             id = id.toString();
